@@ -941,14 +941,25 @@ async function loadData(){
 
 async function saveData(){
   /* Guarda cada proyecto en su propio documento (no todos juntos), así una foto
-     grande en un proyecto nunca puede romper el guardado de los demás. */
-  try{
-    for(const p of STATE.projects){
+     grande en un proyecto nunca puede romper el guardado de los demás.
+     Si alguno falla, seguimos con los demás y avisamos cuáles, en vez de fallar en silencio. */
+  const errores = [];
+  for(const p of STATE.projects){
+    try{
       await fbSaveProject(p);
+    }catch(e){
+      console.error('No se pudo guardar el proyecto:', p.nombre, e);
+      errores.push({ nombre: p.nombre, mensaje: (e && e.message) ? e.message : String(e) });
     }
-    STATE.lastSync = Date.now();
-  }catch(e){
-    console.error('No se pudo guardar', e);
+  }
+  STATE.lastSync = Date.now();
+  if(errores.length){
+    const detalle = errores.slice(0,3).map(x=>`• ${x.nombre}: ${x.mensaje}`).join('\n');
+    alert(
+      `⚠️ No se pudo guardar ${errores.length} proyecto(s) en Firebase.\n\n${detalle}` +
+      (errores.length > 3 ? '\n…' : '') +
+      `\n\nCausas probables: las Reglas de seguridad de Firestore no están publicadas correctamente, o el documento superó el límite de 1MB (una foto muy pesada). Los cambios NO se guardaron — van a desaparecer si recargás la página.`
+    );
   }
 }
 
@@ -1397,9 +1408,8 @@ function renderDetailView(){
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${canUpdate(p) ? `<button class="btn primary" data-action="open-update" data-id="${p.id}">Registrar actualización</button>` : ''}
+          ${canUpdate(p) ? `<button class="btn primary" data-action="open-edit" data-id="${p.id}">${canFullEdit(p)?'Editar proyecto':'Actualizar proyecto'}</button>` : ''}
           ${canFullEdit(p) ? `
-          <button class="btn" data-action="open-edit" data-id="${p.id}">Editar ficha</button>
           ${p.estado==='activo'
             ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
             : `<button class="btn" data-action="unarchive" data-id="${p.id}">Reactivar</button>`}
@@ -1745,7 +1755,6 @@ function handleAction(action, el){
     case 'filter-alerta': STATE.filterAlerta = el.value; render(); break;
     case 'open-new': openProjectModal(null); break;
     case 'open-edit': openProjectModal(getProject(el.dataset.id)); break;
-    case 'open-update': openUpdateModal(getProject(el.dataset.id)); break;
     case 'archive': setEstado(el.dataset.id, 'archivado'); break;
     case 'unarchive': setEstado(el.dataset.id, 'activo'); break;
     case 'login': {
@@ -2054,8 +2063,9 @@ function openModalShell(title, bodyHtml, onMount){
 
 function openProjectModal(project){
   const isNew = !project;
-  if(!isNew && !canFullEdit(project)) return;
+  if(!isNew && !canUpdate(project)) return;
   const u = STATE.currentUser;
+  const fullAccess = isNew || canFullEdit(project);
   const lockArea = isNew && !isExcelencia();
   const p = project || {
     id: uid('proj'), numero: getNextNumero(), nombre:'', area: lockArea ? u.area : STATE.areas[0], responsable: !isExcelencia() ? u.nombre : '', etapa:'Estudio',
@@ -2066,6 +2076,7 @@ function openProjectModal(project){
   };
 
   const body = `
+    ${fullAccess ? `
     <div class="form-grid">
       <div class="field"><label>Nombre del proyecto</label><input type="text" id="f-nombre" value="${esc(p.nombre)}"></div>
       <div class="field"><label>Área</label><select id="f-area" ${lockArea?'disabled':''}>${STATE.areas.map(a=>`<option ${a===p.area?'selected':''}>${a}</option>`).join('')}</select>${lockArea?`<input type="hidden" id="f-area-locked" value="${esc(p.area)}">`:''}</div>
@@ -2076,10 +2087,13 @@ function openProjectModal(project){
       <div class="field"><label>Fecha de requerimiento</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
       <div class="field"><label>Fecha de inicio</label><input type="date" id="f-finicio" value="${p.fechaInicio||''}"></div>
       <div class="field"><label>Fecha proyectada de término</label><input type="date" id="f-ftermino" value="${p.fechaTermino||''}"></div>
-      <div class="field"></div>
+      <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
+    </div>` : ''}
+
+    <div class="form-grid" style="margin-top:${fullAccess?'12px':'0'};">
       <div class="field"><label>% avance plan (de la etapa)</label><input type="number" id="f-avanceplan" min="0" max="100" value="${p.avancePlan||0}"></div>
       <div class="field"><label>% avance real (de la etapa)</label><input type="number" id="f-avancereal" min="0" max="100" value="${p.avanceReal||0}"></div>
-      <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
+      <div class="field"><label>Etapa actual</label><select id="f-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select></div>
       <div class="field"><label>Ejecutado ($)</label><input type="number" id="f-ejecutado" min="0" value="${p.ejecutado||0}"></div>
     </div>
 
@@ -2112,6 +2126,8 @@ function openProjectModal(project){
         </div>
       </div>
     </div>
+
+    ${fullAccess ? `
     <div class="subsection">
       <div class="subsection-title">Hitos principales</div>
       <div id="hitos-wrap"></div>
@@ -2120,18 +2136,7 @@ function openProjectModal(project){
         <button class="btn sm" type="button" id="import-hitos-btn">Importar desde Excel / CSV</button>
         <input type="file" id="import-hitos-file" accept=".xlsx,.xls,.csv" style="display:none;">
       </div>
-      <div class="small-note" style="margin-top:8px;margin-bottom:0;">El archivo debe tener columnas: <b>Actividad</b>, <b>Inicio</b> y <b>Fin</b> (las fechas de plan). Estas líneas son solo de referencia temporal; el % de avance se controla a nivel del proyecto según su etapa actual, más abajo. Si tu carta Gantt está hecha en think-cell, usa "Editar datos" en PowerPoint para exportar esa misma tabla a Excel.</div>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Etapa y avance del proyecto</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Etapa actual</label>
-          <select id="f-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select>
-        </div>
-      </div>
-      <div class="small-note" style="margin-top:8px;margin-bottom:0;">El % de avance real y plan que definiste arriba corresponde a esta etapa. Cuando el proyecto pase a la siguiente etapa, actualiza este campo y reinicia el % de avance.</div>
+      <div class="small-note" style="margin-top:8px;margin-bottom:0;">El archivo debe tener columnas: <b>Actividad</b>, <b>Inicio</b> y <b>Fin</b> (las fechas de plan). Estas líneas son solo de referencia temporal; el % de avance se controla a nivel del proyecto según su etapa actual. Si tu carta Gantt está hecha en think-cell, usa "Editar datos" en PowerPoint para exportar esa misma tabla a Excel.</div>
     </div>
 
     <div class="subsection">
@@ -2160,7 +2165,7 @@ function openProjectModal(project){
         </div>
       </div>
       <div class="small-note" style="margin-top:8px;margin-bottom:0;">Estas listas las administra Excelencia Operacional desde la pestaña "Administración". Si no ves la opción que necesitás, agregala ahí primero.</div>
-    </div>
+    </div>` : ''}
 
     <div class="subsection">
       <div class="subsection-title">Riesgos</div>
@@ -2186,13 +2191,19 @@ function openProjectModal(project){
       <button class="btn sm" type="button" id="add-lowlight">+ Agregar lowlight</button>
     </div>
 
+    <div class="field" style="margin-top:16px;">
+      <label>Comentario de esta actualización (opcional, queda en el historial)</label>
+      <textarea id="f-comentario" rows="2" placeholder="Ej: Se completó el hito de diseño, continúa en curso la etapa de migración"></textarea>
+    </div>
+
     <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
       <button class="btn" type="button" id="cancel-btn">Cancelar</button>
       <button class="btn primary" type="button" id="save-btn">${isNew?'Crear proyecto':'Guardar cambios'}</button>
     </div>
   `;
 
-  const overlay = openModalShell(isNew ? 'Nuevo proyecto' : 'Editar proyecto', body, (ov)=>{
+  const modalTitle = isNew ? 'Nuevo proyecto' : (fullAccess ? 'Editar proyecto' : 'Actualizar proyecto — ' + esc(p.nombre));
+  const overlay = openModalShell(modalTitle, body, (ov)=>{
     let hitos = JSON.parse(JSON.stringify(p.hitos||[]));
     let riesgos = JSON.parse(JSON.stringify(p.riesgos||[]));
     let apoyos = JSON.parse(JSON.stringify(p.apoyos||[]));
@@ -2223,7 +2234,9 @@ function openProjectModal(project){
     };
 
     function renderHitos(){
-      ov.querySelector('#hitos-wrap').innerHTML = hitos.map((h,i)=>`
+      const wrap = ov.querySelector('#hitos-wrap');
+      if(!wrap) return;
+      wrap.innerHTML = hitos.map((h,i)=>`
         <div class="repeat-row">
           <input type="text" placeholder="Nombre de la actividad" value="${esc(h.nombre)}" data-hi="${i}" data-hf="nombre" style="flex:2;">
           <input type="date" value="${h.inicio||''}" data-hi="${i}" data-hf="inicio">
@@ -2294,62 +2307,74 @@ function openProjectModal(project){
         btn.onclick = () => { lowlights.splice(+btn.dataset.delLl,1); renderLowlights(); };
       });
     }
-    renderHitos(); renderRiesgos(); renderApoyos(); renderHighlights(); renderLowlights();
+    renderRiesgos(); renderApoyos(); renderHighlights(); renderLowlights();
     ov.querySelector('#add-highlight').onclick = () => { highlights.push({id:uid('hi'),descripcion:''}); renderHighlights(); };
     ov.querySelector('#add-lowlight').onclick = () => { lowlights.push({id:uid('lo'),descripcion:''}); renderLowlights(); };
-
-    ov.querySelector('#add-hito').onclick = () => { hitos.push({id:uid('h'),nombre:'',inicio:todayISO(),fin:todayISO()}); renderHitos(); };
-    ov.querySelector('#import-hitos-btn').onclick = () => { ov.querySelector('#import-hitos-file').click(); };
-    ov.querySelector('#import-hitos-file').onchange = async (e) => {
-      const file = e.target.files[0];
-      if(!file) return;
-      try{
-        const imported = await importHitosFromFile(file);
-        if(!imported.length){ alert('No se encontraron filas válidas en el archivo. Revisa que tenga columnas Actividad, Inicio y Fin.'); return; }
-        hitos = hitos.concat(imported);
-        renderHitos();
-      }catch(err){
-        console.error(err);
-        alert('No se pudo leer el archivo. Verifica que sea un Excel (.xlsx) o CSV válido.');
-      }
-      e.target.value = '';
-    };
     ov.querySelector('#add-riesgo').onclick = () => { riesgos.push({id:uid('r'),descripcion:'',nivel:'medio'}); renderRiesgos(); };
     ov.querySelector('#add-apoyo').onclick = () => { apoyos.push({id:uid('a'),descripcion:''}); renderApoyos(); };
 
+    if(fullAccess){
+      renderHitos();
+      ov.querySelector('#add-hito').onclick = () => { hitos.push({id:uid('h'),nombre:'',inicio:todayISO(),fin:todayISO()}); renderHitos(); };
+      ov.querySelector('#import-hitos-btn').onclick = () => { ov.querySelector('#import-hitos-file').click(); };
+      ov.querySelector('#import-hitos-file').onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        try{
+          const imported = await importHitosFromFile(file);
+          if(!imported.length){ alert('No se encontraron filas válidas en el archivo. Revisa que tenga columnas Actividad, Inicio y Fin.'); return; }
+          hitos = hitos.concat(imported);
+          renderHitos();
+        }catch(err){
+          console.error(err);
+          alert('No se pudo leer el archivo. Verifica que sea un Excel (.xlsx) o CSV válido.');
+        }
+        e.target.value = '';
+      };
+    }
+
     ov.querySelector('#cancel-btn').onclick = () => ov.remove();
     ov.querySelector('#save-btn').onclick = async () => {
-      const nombre = ov.querySelector('#f-nombre').value.trim();
-      if(!nombre){ ov.querySelector('#f-nombre').focus(); return; }
-      p.nombre = nombre;
-      p.area = lockArea ? ov.querySelector('#f-area-locked').value : ov.querySelector('#f-area').value;
-      p.responsable = ov.querySelector('#f-responsable').value.trim();
-      p.estado = ov.querySelector('#f-estado').value;
-      p.fechaRequerimiento = ov.querySelector('#f-freq').value;
-      p.fechaInicio = ov.querySelector('#f-finicio').value;
-      p.fechaTermino = ov.querySelector('#f-ftermino').value;
-      p.avancePlan = Number(ov.querySelector('#f-avanceplan').value)||0;
-      p.avanceReal = Number(ov.querySelector('#f-avancereal').value)||0;
-      p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
-      p.ejecutado = Number(ov.querySelector('#f-ejecutado').value)||0;
+      if(fullAccess){
+        const nombre = ov.querySelector('#f-nombre').value.trim();
+        if(!nombre){ ov.querySelector('#f-nombre').focus(); return; }
+        p.nombre = nombre;
+        p.area = lockArea ? ov.querySelector('#f-area-locked').value : ov.querySelector('#f-area').value;
+        p.responsable = ov.querySelector('#f-responsable').value.trim();
+        p.estado = ov.querySelector('#f-estado').value;
+        p.fechaRequerimiento = ov.querySelector('#f-freq').value;
+        p.fechaInicio = ov.querySelector('#f-finicio').value;
+        p.fechaTermino = ov.querySelector('#f-ftermino').value;
+        p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
+        p.sesion = ov.querySelector('#f-sesion').value || null;
+        p.tipoProyecto = ov.querySelector('#f-tipo').value || null;
+        p.kpiDriver = ov.querySelector('#f-kpi').value || null;
+        p.hitos = hitos.filter(h=>h.nombre.trim());
+      }
+      p.avancePlan = Math.max(0, Math.min(100, Number(ov.querySelector('#f-avanceplan').value)||0));
+      p.avanceReal = Math.max(0, Math.min(100, Number(ov.querySelector('#f-avancereal').value)||0));
       p.etapa = ov.querySelector('#f-etapa').value;
-      p.sesion = ov.querySelector('#f-sesion').value || null;
-      p.tipoProyecto = ov.querySelector('#f-tipo').value || null;
-      p.kpiDriver = ov.querySelector('#f-kpi').value || null;
+      p.ejecutado = Number(ov.querySelector('#f-ejecutado').value)||0;
       p.alerta = { color: ov.querySelector('#f-alerta-color').value, comentario: ov.querySelector('#f-alerta-comentario').value.trim() };
       p.imagen = imagenData;
-      p.hitos = hitos.filter(h=>h.nombre.trim());
       p.riesgos = riesgos.filter(r=>r.descripcion.trim());
       p.apoyos = apoyos.filter(a=>a.descripcion.trim());
       p.highlights = highlights.filter(x=>x.descripcion.trim());
       p.lowlights = lowlights.filter(x=>x.descripcion.trim());
       p.historial = p.historial || [];
 
+      const comentario = ov.querySelector('#f-comentario').value.trim();
+      let cambio;
       if(isNew){
-        p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Proyecto creado y agregado al listado de seguimiento'});
-        STATE.projects.push(p);
+        cambio = 'Proyecto creado y agregado al listado de seguimiento';
       } else {
-        p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Editó la ficha del proyecto'});
+        cambio = `Actualización — Etapa: ${p.etapa}, Avance: ${p.avanceReal}% real / ${p.avancePlan}% plan, Alerta: ${p.alerta.color}` + (fullAccess ? ' (incluye datos de ficha)' : '');
+      }
+      if(comentario) cambio += ' — ' + comentario;
+      p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio});
+
+      if(isNew){
+        STATE.projects.push(p);
       }
       await saveData();
       ov.remove();
@@ -2427,209 +2452,9 @@ function openGanttQuickEdit(projectId, hitoId){
   });
 }
 
-function openUpdateModal(project){
-  if(!canUpdate(project)) return;
-  const p = project;
-  const alerta = p.alerta || {color:'verde', comentario:''};
-  const body = `
-    <div class="form-grid">
-      <div class="field"><label>Actualizado por</label><input type="text" id="u-usuario" value="${esc(STATE.currentUser.nombre)}"></div>
-      <div class="field"><label>Fecha</label><input type="date" id="u-fecha" value="${todayISO()}"></div>
-      <div class="field"><label>Etapa actual</label><select id="u-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select></div>
-      <div class="field"><label>% avance real (de la etapa)</label><input type="number" id="u-avance" min="0" max="100" value="${p.avanceReal||0}"></div>
-      <div class="field"><label>Ejecutado presupuestario ($)</label><input type="number" id="u-ejecutado" min="0" value="${p.ejecutado||0}"></div>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Semáforo de alerta</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Color de alerta</label>
-          <select id="u-alerta-color">
-            <option value="verde" ${alerta.color==='verde'?'selected':''}>Verde — sin nada que relevar</option>
-            <option value="ambar" ${alerta.color==='ambar'?'selected':''}>Amarillo — a monitorear</option>
-            <option value="rojo" ${alerta.color==='rojo'?'selected':''}>Rojo — relevar en reunión</option>
-          </select>
-        </div>
-      </div>
-      <div class="field" style="margin-top:10px;">
-        <label>Comentario de alerta (visible en el listado general)</label>
-        <textarea id="u-alerta-comentario" rows="2" placeholder="Ej: aunque el avance va en línea con el plan, necesitamos apoyo de TI para el siguiente hito">${esc(alerta.comentario||'')}</textarea>
-      </div>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Foto del proyecto</div>
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-        <img id="u-photo-preview" src="${p.imagen||''}" style="${p.imagen?'':'display:none;'}" class="photo-upload-preview">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input type="file" id="u-photo-file" accept="image/*" style="display:none;">
-          <button class="btn sm" type="button" id="u-photo-btn">Subir / cambiar foto</button>
-          <button class="btn sm danger" type="button" id="u-photo-remove-btn" style="${p.imagen?'':'display:none;'}">Quitar foto</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Riesgos</div>
-      <div id="u-riesgos-wrap"></div>
-      <button class="btn sm" type="button" id="u-add-riesgo">+ Agregar riesgo</button>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Requerimientos de apoyo</div>
-      <div id="u-apoyos-wrap"></div>
-      <button class="btn sm" type="button" id="u-add-apoyo">+ Agregar requerimiento</button>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Highlights</div>
-      <div id="u-highlights-wrap"></div>
-      <button class="btn sm" type="button" id="u-add-highlight">+ Agregar highlight</button>
-    </div>
-
-    <div class="subsection">
-      <div class="subsection-title">Lowlights</div>
-      <div id="u-lowlights-wrap"></div>
-      <button class="btn sm" type="button" id="u-add-lowlight">+ Agregar lowlight</button>
-    </div>
-
-    <div class="field" style="margin-top:16px;">
-      <label>Comentario general de la actualización</label>
-      <textarea id="u-comentario" rows="3" placeholder="Ej: Se completó el hito de diseño, continúa en curso la etapa de migración"></textarea>
-    </div>
-    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
-      <button class="btn" type="button" id="u-cancel">Cancelar</button>
-      <button class="btn primary" type="button" id="u-save">Guardar actualización</button>
-    </div>
-  `;
-  const ov = openModalShell('Registrar actualización — ' + esc(p.nombre), body, (ov)=>{
-    let riesgos = JSON.parse(JSON.stringify(p.riesgos||[]));
-    let apoyos = JSON.parse(JSON.stringify(p.apoyos||[]));
-    let highlights = JSON.parse(JSON.stringify(p.highlights||[]));
-    let lowlights = JSON.parse(JSON.stringify(p.lowlights||[]));
-    let imagenData = p.imagen || null;
-
-    ov.querySelector('#u-photo-btn').onclick = () => ov.querySelector('#u-photo-file').click();
-    ov.querySelector('#u-photo-file').onchange = async (e) => {
-      const file = e.target.files[0];
-      if(!file) return;
-      try{
-        imagenData = await compressImage(file);
-        const img = ov.querySelector('#u-photo-preview');
-        img.src = imagenData; img.style.display = '';
-        ov.querySelector('#u-photo-remove-btn').style.display = '';
-      }catch(err){
-        console.error(err);
-        alert('No se pudo procesar la imagen. Prueba con otro archivo.');
-      }
-      e.target.value = '';
-    };
-    ov.querySelector('#u-photo-remove-btn').onclick = () => {
-      imagenData = null;
-      const img = ov.querySelector('#u-photo-preview');
-      img.src = ''; img.style.display = 'none';
-      ov.querySelector('#u-photo-remove-btn').style.display = 'none';
-    };
-
-    function renderURiesgos(){
-      ov.querySelector('#u-riesgos-wrap').innerHTML = riesgos.map((r,i)=>`
-        <div class="repeat-row">
-          <input type="text" placeholder="Descripción del riesgo" value="${esc(r.descripcion)}" data-uri="${i}" data-urf="descripcion">
-          <select data-uri="${i}" data-urf="nivel">
-            <option value="bajo" ${r.nivel==='bajo'?'selected':''}>Bajo</option>
-            <option value="medio" ${r.nivel==='medio'?'selected':''}>Medio</option>
-            <option value="alto" ${r.nivel==='alto'?'selected':''}>Alto</option>
-          </select>
-          <button class="btn sm danger" type="button" data-udel-riesgo="${i}">✕</button>
-        </div>`).join('');
-      ov.querySelectorAll('[data-uri]').forEach(inp=>{
-        inp.oninput = () => { riesgos[+inp.dataset.uri][inp.dataset.urf] = inp.value; };
-      });
-      ov.querySelectorAll('[data-udel-riesgo]').forEach(btn=>{
-        btn.onclick = () => { riesgos.splice(+btn.dataset.udelRiesgo,1); renderURiesgos(); };
-      });
-    }
-    function renderUApoyos(){
-      ov.querySelector('#u-apoyos-wrap').innerHTML = apoyos.map((a,i)=>`
-        <div class="repeat-row">
-          <input type="text" placeholder="Requerimiento de apoyo" value="${esc(a.descripcion)}" data-uai="${i}">
-          <button class="btn sm danger" type="button" data-udel-apoyo="${i}">✕</button>
-        </div>`).join('');
-      ov.querySelectorAll('[data-uai]').forEach(inp=>{
-        inp.oninput = () => { apoyos[+inp.dataset.uai].descripcion = inp.value; };
-      });
-      ov.querySelectorAll('[data-udel-apoyo]').forEach(btn=>{
-        btn.onclick = () => { apoyos.splice(+btn.dataset.udelApoyo,1); renderUApoyos(); };
-      });
-    }
-    function renderUHighlights(){
-      ov.querySelector('#u-highlights-wrap').innerHTML = highlights.map((x,i)=>`
-        <div class="repeat-row">
-          <input type="text" placeholder="Highlight" value="${esc(x.descripcion)}" data-uhli="${i}">
-          <button class="btn sm danger" type="button" data-udel-hl="${i}">✕</button>
-        </div>`).join('');
-      ov.querySelectorAll('[data-uhli]').forEach(inp=>{
-        inp.oninput = () => { highlights[+inp.dataset.uhli].descripcion = inp.value; };
-      });
-      ov.querySelectorAll('[data-udel-hl]').forEach(btn=>{
-        btn.onclick = () => { highlights.splice(+btn.dataset.udelHl,1); renderUHighlights(); };
-      });
-    }
-    function renderULowlights(){
-      ov.querySelector('#u-lowlights-wrap').innerHTML = lowlights.map((x,i)=>`
-        <div class="repeat-row">
-          <input type="text" placeholder="Lowlight" value="${esc(x.descripcion)}" data-ulli="${i}">
-          <button class="btn sm danger" type="button" data-udel-ll="${i}">✕</button>
-        </div>`).join('');
-      ov.querySelectorAll('[data-ulli]').forEach(inp=>{
-        inp.oninput = () => { lowlights[+inp.dataset.ulli].descripcion = inp.value; };
-      });
-      ov.querySelectorAll('[data-udel-ll]').forEach(btn=>{
-        btn.onclick = () => { lowlights.splice(+btn.dataset.udelLl,1); renderULowlights(); };
-      });
-    }
-    renderURiesgos(); renderUApoyos(); renderUHighlights(); renderULowlights();
-
-    ov.querySelector('#u-add-riesgo').onclick = () => { riesgos.push({id:uid('r'),descripcion:'',nivel:'medio'}); renderURiesgos(); };
-    ov.querySelector('#u-add-apoyo').onclick = () => { apoyos.push({id:uid('a'),descripcion:''}); renderUApoyos(); };
-    ov.querySelector('#u-add-highlight').onclick = () => { highlights.push({id:uid('hi'),descripcion:''}); renderUHighlights(); };
-    ov.querySelector('#u-add-lowlight').onclick = () => { lowlights.push({id:uid('lo'),descripcion:''}); renderULowlights(); };
-
-    ov.querySelector('#u-cancel').onclick = () => ov.remove();
-    ov.querySelector('#u-save').onclick = async () => {
-      const usuario = ov.querySelector('#u-usuario').value.trim() || STATE.currentUser.nombre;
-      const fecha = ov.querySelector('#u-fecha').value || todayISO();
-      const nuevaEtapa = ov.querySelector('#u-etapa').value;
-      const nuevoAvance = Number(ov.querySelector('#u-avance').value)||0;
-      const nuevoEjecutado = Number(ov.querySelector('#u-ejecutado').value)||0;
-      const nuevoAlertaColor = ov.querySelector('#u-alerta-color').value;
-      const nuevoAlertaComentario = ov.querySelector('#u-alerta-comentario').value.trim();
-      const comentario = ov.querySelector('#u-comentario').value.trim();
-
-      p.etapa = nuevaEtapa;
-      p.avanceReal = nuevoAvance;
-      p.ejecutado = nuevoEjecutado;
-      p.alerta = {color:nuevoAlertaColor, comentario:nuevoAlertaComentario};
-      p.imagen = imagenData;
-      p.riesgos = riesgos.filter(r=>r.descripcion.trim());
-      p.apoyos = apoyos.filter(a=>a.descripcion.trim());
-      p.highlights = highlights.filter(x=>x.descripcion.trim());
-      p.lowlights = lowlights.filter(x=>x.descripcion.trim());
-      p.historial = p.historial || [];
-      p.historial.push({
-        id: uid('l'), fecha, usuario,
-        cambio: (comentario ? comentario + ' — ' : '') + `Etapa: ${nuevaEtapa}. Avance actualizado a ${nuevoAvance}%, alerta en ${nuevoAlertaColor}`
-      });
-      await saveData();
-      ov.remove();
-      render();
-    };
-  });
-}
 
 /* ---------------- PROJECT PHOTO (upload, compress, lightbox) ---------------- */
-function compressImage(file, maxW=900, quality=0.75){
+function compressImageOnce(file, maxW, quality){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -2648,6 +2473,20 @@ function compressImage(file, maxW=900, quality=0.75){
     reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
     reader.readAsDataURL(file);
   });
+}
+
+async function compressImage(file, maxW=900, quality=0.75){
+  /* Firestore permite hasta 1MB por documento (todo el proyecto junto). Si la foto
+     comprimida queda pesada, la recomprimimos más agresivo antes de intentar guardarla,
+     para no arriesgarnos a que el guardado falle en silencio por superar el límite. */
+  let dataUrl = await compressImageOnce(file, maxW, quality);
+  if(dataUrl.length > 700000){
+    dataUrl = await compressImageOnce(file, 600, 0.55);
+  }
+  if(dataUrl.length > 700000){
+    dataUrl = await compressImageOnce(file, 400, 0.5);
+  }
+  return dataUrl;
 }
 
 function showLightbox(url, caption){
