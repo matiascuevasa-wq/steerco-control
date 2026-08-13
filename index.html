@@ -262,6 +262,45 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
 .sync-row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-faint);margin-top:8px;justify-content:flex-end;}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--verde);display:inline-block;}
 .readonly-note{font-size:12px;color:var(--ink-faint);background:var(--bg);border-radius:7px;padding:8px 12px;margin-top:4px;}
+
+/* ---------- vista compacta (lámina) ---------- */
+.slide-view{
+  max-width:1280px;margin:0 auto;
+  background:#fff;border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px 18px;box-shadow:0 2px 14px rgba(20,25,35,.06);
+  font-size:11px;
+}
+.slide-view .panel{border-radius:8px;}
+.slide-view .panel + .panel{margin-top:8px;}
+.slide-view .panel-head{padding:7px 12px;}
+.slide-view .panel-head h2{font-size:12px;}
+.slide-view .panel-body{padding:8px 12px;}
+.slide-view h2{font-size:16px;margin:0 0 2px;}
+.slide-view .chip-row{gap:6px;margin-top:6px;}
+.slide-view .mchip{padding:4px 8px;min-width:64px;}
+.slide-view .mchip .mc-label{font-size:8px;}
+.slide-view .mchip .mc-value{font-size:10.5px;}
+.slide-view .project-photo-thumb,
+.slide-view .photo-placeholder{width:90px;height:64px;}
+.slide-view .detail-header{gap:10px;}
+.slide-view .gantt-wrap{max-height:150px;}
+.slide-view .gantt-row{padding:1px 0;}
+.slide-view .gantt-label{width:150px;font-size:9.5px;}
+.slide-view .gantt-track{height:9px;min-width:260px;}
+.slide-view .gantt-axis-track{height:12px;}
+.slide-view .gantt-axis-tick{font-size:8.5px;}
+.slide-view .grid2{grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.slide-view .tag-item{font-size:10px;padding:3px 0;}
+.slide-view .hito-item{font-size:10px;padding:3px 0;}
+.slide-view .repeat-row{margin-top:6px;gap:4px;}
+.slide-view .repeat-row input,
+.slide-view .repeat-row select{font-size:10px;padding:3px 6px;}
+.slide-view .btn.sm{font-size:10px;padding:3px 7px;}
+.slide-view .budget-bar-track{height:6px;}
+.slide-view .budget-nums{font-size:10px;}
+.slide-view .historial-panel{display:none;}
+.slide-view .small-note{display:none;}
+@media(max-width:900px){.slide-view .grid2{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -269,7 +308,7 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -285,6 +324,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 const FB_COLLECTION = 'steercoData';
+const PROJECTS_COLLECTION = 'projects';
 
 let fbReady = new Promise((resolve, reject) => {
   onAuthStateChanged(auth, (user) => { if(user) resolve(user); });
@@ -306,6 +346,44 @@ function fbListen(id, callback){
   }, (err) => { console.error('Error de sincronización en vivo:', err); });
 }
 
+/* Cada proyecto vive en su propio documento (no todos juntos), para que una foto
+   nunca pueda hacer que el conjunto supere el límite de 1MB por documento de Firestore. */
+async function fbGetAllProjects(){
+  await fbReady;
+  const snap = await getDocs(collection(db, PROJECTS_COLLECTION));
+  const out = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if(data && data.value){
+      try{ out.push(JSON.parse(data.value)); }catch(e){}
+    }
+  });
+  return out;
+}
+async function fbSaveProject(p){
+  await fbReady;
+  await setDoc(doc(db, PROJECTS_COLLECTION, p.id), { value: JSON.stringify(p), updatedAt: Date.now() });
+}
+async function fbDeleteAllProjects(){
+  await fbReady;
+  const snap = await getDocs(collection(db, PROJECTS_COLLECTION));
+  for(const d of snap.docs){
+    await deleteDoc(doc(db, PROJECTS_COLLECTION, d.id));
+  }
+}
+function fbListenProjects(callback){
+  return onSnapshot(collection(db, PROJECTS_COLLECTION), (snap) => {
+    const out = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if(data && data.value){
+        try{ out.push(JSON.parse(data.value)); }catch(e){}
+      }
+    });
+    callback(out);
+  }, (err) => { console.error('Error de sincronización en vivo:', err); });
+}
+
 const STORAGE_KEY = 'projects-v1';
 let STATE = {
   view: 'list',
@@ -323,6 +401,15 @@ const AREAS_SEED = ['Gerencia de Proyectos'];
 const EXCELENCIA_PASSWORD = 'Excelencia OEMS';
 const ETAPAS = ['Conceptual','Pre-Factibilidad','Factibilidad','Estudio','Ejecución'];
 STATE.areas = [];
+const SESIONES_KEY = 'sesiones-v1';
+const SESIONES_SEED = [];
+STATE.sesiones = [];
+const TIPOS_KEY = 'tipos-proyecto-v1';
+const TIPOS_SEED = [];
+STATE.tipos = [];
+const KPI_KEY = 'kpi-drivers-v1';
+const KPI_SEED = [];
+STATE.kpiDrivers = [];
 const USER_KEY = 'current-user-v1';
 const DIRECTORIO_KEY = 'directorio-v1';
 const DIRECTORIO_SEED = [
@@ -340,6 +427,7 @@ STATE.lastSync = null;
 STATE.polling = false;
 STATE.loginSelected = '';
 STATE.loginError = '';
+STATE.slideMode = false;
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -780,9 +868,13 @@ function seedData(){
 
 async function loadData(){
   try{
-    const res = await fbGetDoc(STORAGE_KEY);
-    STATE.projects = res && res.value ? JSON.parse(res.value) : seedData();
-    if(!res || !res.value){ await saveData(); }
+    const list = await fbGetAllProjects();
+    if(list.length){
+      STATE.projects = list;
+    } else {
+      STATE.projects = seedData();
+      await saveData();
+    }
   }catch(e){
     console.error('Error cargando proyectos:', e);
     STATE.projects = seedData();
@@ -809,6 +901,33 @@ async function loadData(){
   }
 
   try{
+    const s = await fbGetDoc(SESIONES_KEY);
+    STATE.sesiones = s && s.value ? JSON.parse(s.value) : SESIONES_SEED.slice();
+    if(!s || !s.value){ await saveSesiones(); }
+  }catch(e){
+    STATE.sesiones = SESIONES_SEED.slice();
+    try{ await saveSesiones(); }catch(e2){}
+  }
+
+  try{
+    const t = await fbGetDoc(TIPOS_KEY);
+    STATE.tipos = t && t.value ? JSON.parse(t.value) : TIPOS_SEED.slice();
+    if(!t || !t.value){ await saveTipos(); }
+  }catch(e){
+    STATE.tipos = TIPOS_SEED.slice();
+    try{ await saveTipos(); }catch(e2){}
+  }
+
+  try{
+    const k = await fbGetDoc(KPI_KEY);
+    STATE.kpiDrivers = k && k.value ? JSON.parse(k.value) : KPI_SEED.slice();
+    if(!k || !k.value){ await saveKpiDrivers(); }
+  }catch(e){
+    STATE.kpiDrivers = KPI_SEED.slice();
+    try{ await saveKpiDrivers(); }catch(e2){}
+  }
+
+  try{
     const stored = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
     STATE.currentUser = stored && STATE.directorio.find(d=>d.nombre===stored.nombre) ? stored : null;
   }catch(e){
@@ -821,8 +940,12 @@ async function loadData(){
 }
 
 async function saveData(){
+  /* Guarda cada proyecto en su propio documento (no todos juntos), así una foto
+     grande en un proyecto nunca puede romper el guardado de los demás. */
   try{
-    await fbSetDoc(STORAGE_KEY, JSON.stringify(STATE.projects));
+    for(const p of STATE.projects){
+      await fbSaveProject(p);
+    }
     STATE.lastSync = Date.now();
   }catch(e){
     console.error('No se pudo guardar', e);
@@ -845,15 +968,38 @@ async function saveAreas(){
   }
 }
 
+async function saveSesiones(){
+  try{
+    await fbSetDoc(SESIONES_KEY, JSON.stringify(STATE.sesiones));
+  }catch(e){
+    console.error('No se pudo guardar las sesiones de seguimiento', e);
+  }
+}
+
+async function saveTipos(){
+  try{
+    await fbSetDoc(TIPOS_KEY, JSON.stringify(STATE.tipos));
+  }catch(e){
+    console.error('No se pudo guardar los tipos de proyecto', e);
+  }
+}
+
+async function saveKpiDrivers(){
+  try{
+    await fbSetDoc(KPI_KEY, JSON.stringify(STATE.kpiDrivers));
+  }catch(e){
+    console.error('No se pudo guardar los KPI drivers', e);
+  }
+}
+
 function startRealtimeSync(){
   if(STATE.polling) return;
   STATE.polling = true;
-  fbListen(STORAGE_KEY, (data) => {
-    if(!data || !data.value) return;
-    const incoming = data.value;
+  fbListenProjects((list) => {
     const current = JSON.stringify(STATE.projects);
+    const incoming = JSON.stringify(list);
     if(incoming !== current){
-      STATE.projects = JSON.parse(incoming);
+      STATE.projects = list;
       STATE.lastSync = Date.now();
       render();
     }
@@ -874,17 +1020,39 @@ function startRealtimeSync(){
       render();
     }
   });
+  fbListen(SESIONES_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    if(incoming !== JSON.stringify(STATE.sesiones)){
+      STATE.sesiones = JSON.parse(incoming);
+      render();
+    }
+  });
+  fbListen(TIPOS_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    if(incoming !== JSON.stringify(STATE.tipos)){
+      STATE.tipos = JSON.parse(incoming);
+      render();
+    }
+  });
+  fbListen(KPI_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    if(incoming !== JSON.stringify(STATE.kpiDrivers)){
+      STATE.kpiDrivers = JSON.parse(incoming);
+      render();
+    }
+  });
 }
 
 async function pollForUpdates(){
   try{
-    const res = await fbGetDoc(STORAGE_KEY);
-    if(res && res.value){
-      const incoming = res.value;
-      const current = JSON.stringify(STATE.projects);
-      if(incoming !== current){
-        STATE.projects = JSON.parse(incoming);
-      }
+    const list = await fbGetAllProjects();
+    const current = JSON.stringify(STATE.projects);
+    const incoming = JSON.stringify(list);
+    if(incoming !== current){
+      STATE.projects = list;
     }
     STATE.lastSync = Date.now();
     render();
@@ -1197,21 +1365,29 @@ function renderDetailView(){
     </div>`).join('') || `<div class="empty">Sin actualizaciones registradas.</div>`;
 
   return `
+  <div class="${STATE.slideMode?'slide-view':''}">
   <div class="panel">
     <div class="panel-body">
-      <div class="filters" style="margin-bottom:14px;">
+      <div class="filters" style="margin-bottom:14px;justify-content:space-between;">
         <select data-action="switch-project">
           ${otherProjects.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${x.numero!=null?'N°'+x.numero+' — ':''}${esc(x.nombre)}</option>`).join('')}
         </select>
+        <button class="btn sm" data-action="toggle-slide-mode">${STATE.slideMode?'Vista normal':'Vista compacta (lámina)'}</button>
       </div>
       <div class="detail-header">
-        ${p.imagen
-          ? `<img src="${p.imagen}" class="project-photo-thumb" data-action="${canUpdate(p)?'photo-quick-upload':'open-lightbox'}" data-id="${p.id}" title="${canUpdate(p)?'Clic para cambiar la foto':'Ampliar foto'}">`
-          : `<div class="photo-placeholder" ${canUpdate(p)?`data-action="photo-quick-upload" data-id="${p.id}" style="cursor:pointer;"`:''}>${canUpdate(p)?'+ Agregar foto':'Sin foto'}</div>`}
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+          ${p.imagen
+            ? `<img src="${p.imagen}" class="project-photo-thumb" data-action="open-lightbox" data-id="${p.id}" title="Clic para ampliar">`
+            : `<div class="photo-placeholder">Sin foto</div>`}
+          ${canUpdate(p) ? `<button class="btn ghost sm" data-action="photo-quick-upload" data-id="${p.id}" style="width:100%;">${p.imagen?'Cambiar foto':'+ Agregar foto'}</button>` : ''}
+        </div>
         <div style="flex:1;">
           <h2>${p.numero!=null?'N°'+p.numero+' — ':''}${esc(p.nombre)}</h2>
           <div class="chip-row">
             <div class="mchip${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-etapa" data-id="${p.id}" title="Clic para cambiar la etapa"`:''}><span class="mc-label">Etapa</span><span class="mc-value">${esc(p.etapa||'—')}</span></div>
+            <div class="mchip"><span class="mc-label">Sesión</span><span class="mc-value">${esc(p.sesion||'—')}</span></div>
+            <div class="mchip"><span class="mc-label">Tipo</span><span class="mc-value">${esc(p.tipoProyecto||'—')}</span></div>
+            <div class="mchip"><span class="mc-label">KPI Driver</span><span class="mc-value">${esc(p.kpiDriver||'—')}</span></div>
             <div class="mchip"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
             <div class="mchip"><span class="mc-label">Requerimiento</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
             <div class="mchip"><span class="mc-label">Término proyectado</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
@@ -1257,7 +1433,7 @@ function renderDetailView(){
         <div class="panel-head"><h2>Lowlights</h2></div>
         <div class="panel-body">${lowlightList}</div>
       </div>
-      <div class="panel">
+      <div class="panel historial-panel">
         <div class="panel-head"><h2>Historial de actualizaciones</h2></div>
         <div class="panel-body">${logList}</div>
       </div>
@@ -1280,6 +1456,7 @@ function renderDetailView(){
         <div class="panel-body">${apoyoList}</div>
       </div>
     </div>
+  </div>
   </div>
   `;
 }
@@ -1415,6 +1592,31 @@ function renderTimelineView(){
 }
 
 
+function renderCategoryPanels(items, opts){
+  const rows = items.map((v,i) => `
+    <div class="follow-row">
+      <div class="follow-name">${esc(v)}</div>
+      <div class="follow-projects">${STATE.projects.filter(p=>p[opts.fieldKey]===v).length} proyecto(s) asociados</div>
+      <button class="btn sm danger" data-action="${opts.listAction}" data-idx="${i}">Quitar</button>
+    </div>`).join('');
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>${esc(opts.title)}</h2></div>
+    <div class="panel-body">
+      ${rows || `<div class="empty">Sin ${esc(opts.title.toLowerCase())} registrados.</div>`}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>${esc(opts.addTitle)}</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="field"><label>Nombre</label><input type="text" id="${opts.inputId}" placeholder="${esc(opts.placeholder)}"></div>
+      </div>
+      <div style="margin-top:14px;"><button class="btn primary" data-action="${opts.addAction}">+ Agregar</button></div>
+    </div>
+  </div>`;
+}
+
 function renderTeamView(){
   if(!isExcelencia()) { STATE.view = 'list'; return renderListView(); }
   const rows = STATE.directorio.map((d,i) => `
@@ -1474,6 +1676,17 @@ function renderTeamView(){
       <div style="margin-top:14px;"><button class="btn primary" data-action="add-area">+ Agregar área</button></div>
     </div>
   </div>
+  ${renderCategoryPanels(STATE.sesiones, {title:'Sesiones de seguimiento', addTitle:'Agregar sesión de seguimiento', placeholder:'Ej: Comité Directorio, Steerco Mensual', inputId:'ns-nombre', listAction:'remove-sesion', addAction:'add-sesion', fieldKey:'sesion'})}
+  ${renderCategoryPanels(STATE.tipos, {title:'Tipos de proyecto', addTitle:'Agregar tipo de proyecto', placeholder:'Ej: Sustentación, Crecimiento, Reposición', inputId:'nt-nombre', listAction:'remove-tipo', addAction:'add-tipo', fieldKey:'tipoProyecto'})}
+  ${renderCategoryPanels(STATE.kpiDrivers, {title:'KPI Drivers', addTitle:'Agregar KPI Driver', placeholder:'Ej: Producción, Costo, Seguridad', inputId:'nk-nombre', listAction:'remove-kpi', addAction:'add-kpi', fieldKey:'kpiDriver'})}
+  <div class="panel">
+    <div class="panel-head"><h2>Importar proyectos</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Para cargar varios proyectos nuevos de una vez (por ejemplo, extraídos de una presentación que le pasaste a Claude), subí acá el archivo <b>JSON</b> que Claude te entregue ya estructurado. Se agregan como proyectos nuevos, con numeración correlativa automática — no reemplaza ni borra los proyectos existentes.</div>
+      <input type="file" id="import-projects-file" accept=".json" style="display:none;">
+      <button class="btn primary" data-action="import-projects-btn">Importar proyectos (archivo .json)</button>
+    </div>
+  </div>
   <div class="panel">
     <div class="panel-head"><h2>Datos de la aplicación</h2></div>
     <div class="panel-body">
@@ -1505,6 +1718,15 @@ function attachHandlers(){
       }
     };
   });
+  const importProjectsFile = document.getElementById('import-projects-file');
+  if(importProjectsFile){
+    importProjectsFile.onchange = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      await importProjectsFromJSON(file);
+      e.target.value = '';
+    };
+  }
 }
 
 function handleAction(action, el){
@@ -1516,6 +1738,7 @@ function handleAction(action, el){
     case 'go-equipo': STATE.view='equipo'; render(); break;
     case 'open-detail': STATE.selectedId = el.dataset.id; STATE.view='detail'; render(); break;
     case 'switch-project': STATE.selectedId = el.value; render(); break;
+    case 'toggle-slide-mode': STATE.slideMode = !STATE.slideMode; render(); break;
     case 'filter-estado': STATE.filterEstado = el.value; render(); break;
     case 'filter-area': STATE.filterArea = el.value; render(); break;
     case 'filter-semaforo': STATE.filterSemaforo = el.value; render(); break;
@@ -1538,6 +1761,7 @@ function handleAction(action, el){
     case 'remove-person': removePerson(Number(el.dataset.idx)); break;
     case 'add-area': addArea(); break;
     case 'reset-seed-data': resetToSeedData(); break;
+    case 'import-projects-btn': { const f = document.getElementById('import-projects-file'); if(f) f.click(); break; }
     case 'quick-edit-etapa': {
       const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
       openQuickEdit(p.id, 'Cambiar etapa', [
@@ -1619,6 +1843,12 @@ function handleAction(action, el){
       break;
     }
     case 'remove-area': removeArea(Number(el.dataset.idx)); break;
+    case 'add-sesion': addCategoryItem('sesiones', 'ns-nombre', saveSesiones); break;
+    case 'remove-sesion': removeCategoryItem('sesiones', Number(el.dataset.idx), 'sesion', saveSesiones); break;
+    case 'add-tipo': addCategoryItem('tipos', 'nt-nombre', saveTipos); break;
+    case 'remove-tipo': removeCategoryItem('tipos', Number(el.dataset.idx), 'tipoProyecto', saveTipos); break;
+    case 'add-kpi': addCategoryItem('kpiDrivers', 'nk-nombre', saveKpiDrivers); break;
+    case 'remove-kpi': removeCategoryItem('kpiDrivers', Number(el.dataset.idx), 'kpiDriver', saveKpiDrivers); break;
     case 'export-pptx': openExportModal(); break;
     case 'open-lightbox': { const p = getProject(el.dataset.id); if(p && p.imagen) showLightbox(p.imagen, p.nombre); break; }
     case 'photo-quick-upload': quickUploadPhoto(el.dataset.id); break;
@@ -1674,16 +1904,97 @@ async function removeArea(idx){
   render();
 }
 
+async function addCategoryItem(stateKey, inputId, saveFn){
+  if(!isExcelencia()) return;
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const nombre = input.value.trim();
+  if(!nombre) return;
+  if(STATE[stateKey].some(v=>v.toLowerCase()===nombre.toLowerCase())) return;
+  STATE[stateKey].push(nombre);
+  await saveFn();
+  render();
+}
+
+async function removeCategoryItem(stateKey, idx, projectFieldKey, saveFn){
+  if(!isExcelencia()) return;
+  const valor = STATE[stateKey][idx];
+  if(!valor) return;
+  const enUso = STATE.projects.some(p=>p[projectFieldKey]===valor);
+  if(enUso){
+    alert('No se puede quitar "'+valor+'": todavía hay proyectos que lo tienen asignado. Reasígnalos primero desde "Editar ficha".');
+    return;
+  }
+  STATE[stateKey].splice(idx,1);
+  await saveFn();
+  render();
+}
+
 async function resetToSeedData(){
   if(!isExcelencia()) return;
   const primeraConf = confirm('Esto reemplazará TODOS los proyectos actuales por los 20 datos originales de la presentación. Se perderá cualquier edición, foto, highlight, lowlight o riesgo agregado desde entonces. ¿Continuar?');
   if(!primeraConf) return;
   const segundaConf = confirm('Confirmación final: esta acción no se puede deshacer. ¿Restablecer de todas formas?');
   if(!segundaConf) return;
+  try{ await fbDeleteAllProjects(); }catch(e){ console.error('Error limpiando proyectos previos:', e); }
   STATE.projects = seedData();
   await saveData();
   STATE.view = 'list';
   render();
+}
+
+async function importProjectsFromJSON(file){
+  if(!isExcelencia()) return;
+  let data;
+  try{
+    const text = await file.text();
+    data = JSON.parse(text);
+  }catch(e){
+    alert('No se pudo leer el archivo. Verificá que sea un JSON válido.');
+    return;
+  }
+  if(!Array.isArray(data)){
+    alert('El archivo debe contener una lista (array) de proyectos, entre corchetes [ ].');
+    return;
+  }
+  let importados = 0, omitidos = 0;
+  for(const raw of data){
+    if(!raw || !raw.nombre || !String(raw.nombre).trim()){ omitidos++; continue; }
+    const p = {
+      id: uid('proj'),
+      numero: getNextNumero(),
+      nombre: String(raw.nombre).trim(),
+      area: (raw.area && STATE.areas.includes(raw.area)) ? raw.area : STATE.areas[0],
+      responsable: raw.responsable ? String(raw.responsable) : '',
+      etapa: ETAPAS.includes(raw.etapa) ? raw.etapa : 'Estudio',
+      fechaRequerimiento: raw.fechaRequerimiento || todayISO(),
+      fechaInicio: raw.fechaInicio || todayISO(),
+      fechaTermino: raw.fechaTermino || todayISO(),
+      avanceReal: Math.max(0, Math.min(100, Number(raw.avanceReal)||0)),
+      avancePlan: Math.max(0, Math.min(100, Number(raw.avancePlan)||0)),
+      estado: raw.estado === 'archivado' ? 'archivado' : 'activo',
+      presupuesto: Number(raw.presupuesto)||0,
+      ejecutado: Number(raw.ejecutado)||0,
+      alerta: (raw.alerta && ['verde','ambar','rojo'].includes(raw.alerta.color)) ? {color:raw.alerta.color, comentario:raw.alerta.comentario||''} : {color:'verde', comentario:''},
+      imagen: null,
+      sesion: (raw.sesion && STATE.sesiones.includes(raw.sesion)) ? raw.sesion : null,
+      tipoProyecto: (raw.tipoProyecto && STATE.tipos.includes(raw.tipoProyecto)) ? raw.tipoProyecto : null,
+      kpiDriver: (raw.kpiDriver && STATE.kpiDrivers.includes(raw.kpiDriver)) ? raw.kpiDriver : null,
+      hitos: Array.isArray(raw.hitos) ? raw.hitos.filter(h=>h && h.nombre).map(h=>({id:uid('h'), nombre:String(h.nombre), inicio:h.inicio||todayISO(), fin:h.fin||todayISO()})) : [],
+      riesgos: Array.isArray(raw.riesgos) ? raw.riesgos.filter(r=>r && r.descripcion).map(r=>({id:uid('r'), descripcion:String(r.descripcion), nivel:['bajo','medio','alto'].includes(r.nivel)?r.nivel:'medio'})) : [],
+      apoyos: Array.isArray(raw.apoyos) ? raw.apoyos.filter(a=>a && a.descripcion).map(a=>({id:uid('a'), descripcion:String(a.descripcion)})) : [],
+      highlights: Array.isArray(raw.highlights) ? raw.highlights.filter(x=>x && x.descripcion).map(x=>({id:uid('hi'), descripcion:String(x.descripcion)})) : [],
+      lowlights: Array.isArray(raw.lowlights) ? raw.lowlights.filter(x=>x && x.descripcion).map(x=>({id:uid('lo'), descripcion:String(x.descripcion)})) : [],
+      historial: [{id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Proyecto importado desde archivo JSON'}]
+    };
+    STATE.projects.push(p);
+    importados++;
+  }
+  if(importados > 0){
+    await saveData();
+  }
+  render();
+  alert(`Importación terminada: ${importados} proyecto(s) agregado(s)` + (omitidos ? `, ${omitidos} omitido(s) por no tener nombre.` : '.'));
 }
 
 async function addPerson(){
@@ -1750,7 +2061,8 @@ function openProjectModal(project){
     id: uid('proj'), numero: getNextNumero(), nombre:'', area: lockArea ? u.area : STATE.areas[0], responsable: !isExcelencia() ? u.nombre : '', etapa:'Estudio',
     fechaRequerimiento:todayISO(), fechaInicio:todayISO(), fechaTermino:todayISO(),
     avanceReal:0, avancePlan:0, estado:'activo', presupuesto:0, ejecutado:0,
-    hitos:[], riesgos:[], apoyos:[], highlights:[], lowlights:[], historial:[], alerta:{color:'verde', comentario:''}, imagen:null
+    hitos:[], riesgos:[], apoyos:[], highlights:[], lowlights:[], historial:[], alerta:{color:'verde', comentario:''}, imagen:null,
+    sesion:null, tipoProyecto:null, kpiDriver:null
   };
 
   const body = `
@@ -1820,6 +2132,34 @@ function openProjectModal(project){
         </div>
       </div>
       <div class="small-note" style="margin-top:8px;margin-bottom:0;">El % de avance real y plan que definiste arriba corresponde a esta etapa. Cuando el proyecto pase a la siguiente etapa, actualiza este campo y reinicia el % de avance.</div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Clasificación</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Sesión de seguimiento</label>
+          <select id="f-sesion">
+            <option value="">— Sin definir —</option>
+            ${STATE.sesiones.map(s=>`<option value="${esc(s)}" ${p.sesion===s?'selected':''}>${esc(s)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo de proyecto</label>
+          <select id="f-tipo">
+            <option value="">— Sin definir —</option>
+            ${STATE.tipos.map(t=>`<option value="${esc(t)}" ${p.tipoProyecto===t?'selected':''}>${esc(t)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>KPI Driver</label>
+          <select id="f-kpi">
+            <option value="">— Sin definir —</option>
+            ${STATE.kpiDrivers.map(k=>`<option value="${esc(k)}" ${p.kpiDriver===k?'selected':''}>${esc(k)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="small-note" style="margin-top:8px;margin-bottom:0;">Estas listas las administra Excelencia Operacional desde la pestaña "Administración". Si no ves la opción que necesitás, agregala ahí primero.</div>
     </div>
 
     <div class="subsection">
@@ -1993,6 +2333,9 @@ function openProjectModal(project){
       p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
       p.ejecutado = Number(ov.querySelector('#f-ejecutado').value)||0;
       p.etapa = ov.querySelector('#f-etapa').value;
+      p.sesion = ov.querySelector('#f-sesion').value || null;
+      p.tipoProyecto = ov.querySelector('#f-tipo').value || null;
+      p.kpiDriver = ov.querySelector('#f-kpi').value || null;
       p.alerta = { color: ov.querySelector('#f-alerta-color').value, comentario: ov.querySelector('#f-alerta-comentario').value.trim() };
       p.imagen = imagenData;
       p.hitos = hitos.filter(h=>h.nombre.trim());
