@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de proyectos</title>
+<style>
+:root{
+  --bg:#F3F4F6;
+  --panel:#FFFFFF;
+  --border:#E1E4E9;
+  --border-strong:#C7CCD4;
+  --ink:#1B2430;
+  --ink-soft:#5B6472;
+  --ink-faint:#8992A0;
+  --navy:#1F3A5F;
+  --navy-dark:#152840;
+  --navy-tint:#E9EEF5;
+  --verde:#1F8A4C;
+  --verde-tint:#E5F5EB;
+  --ambar:#B87A12;
+  --ambar-tint:#FCF1DE;
+  --rojo:#C23B34;
+  --rojo-tint:#FBE9E7;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --disp: 'Space Grotesk', var(--sans);
+  --radius: 10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.5;
+}
+#app{max-width:1180px;margin:0 auto;padding:28px 24px 60px;}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+.topbar h1{font-family:var(--disp);font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-0.01em;}
+.topbar .sub{color:var(--ink-soft);font-size:13px;}
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:4px;}
+.tab-btn{border:none;background:transparent;padding:8px 16px;border-radius:999px;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s;}
+.tab-btn.active{background:var(--navy);color:#fff;}
+.tab-btn:not(.active):hover{background:var(--bg);}
+
+/* ---------- kpi row ---------- */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+.kpi .num{font-family:var(--disp);font-size:24px;font-weight:600;line-height:1;}
+.kpi .lbl{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+.kpi.v .num{color:var(--verde);}
+.kpi.a .num{color:var(--ambar);}
+.kpi.r .num{color:var(--rojo);}
+
+/* ---------- executive summary bar ---------- */
+.exec-summary{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:11px 18px;margin-bottom:16px;flex-wrap:wrap;}
+.es-block{display:flex;align-items:baseline;gap:6px;}
+.es-total{font-family:var(--disp);font-size:19px;font-weight:700;color:var(--navy);}
+.es-label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+.es-div{width:1px;height:20px;background:var(--border);}
+.exec-cluster{display:flex;align-items:center;gap:10px;}
+.exec-cluster .es-title{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin-right:2px;}
+.exec-chip{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);}
+.exec-chip .dot{width:8px;height:8px;}
+.es-archived{margin-left:auto;font-size:11.5px;color:var(--ink-faint);}
+@media(max-width:640px){.exec-summary{gap:10px;} .es-archived{margin-left:0;width:100%;}}
+
+/* ---------- panel/card ---------- */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);}
+.panel + .panel{margin-top:16px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+.panel-head h2{font-family:var(--disp);font-size:15px;font-weight:600;margin:0;}
+.panel-body{padding:16px 18px;}
+
+/* ---------- filters ---------- */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+select,input[type=text],input[type=date],input[type=number],textarea{
+  font-family:var(--sans);font-size:13px;color:var(--ink);
+  background:#fff;border:1px solid var(--border-strong);border-radius:7px;
+  padding:7px 10px;
+}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--navy);outline-offset:0px;border-color:var(--navy);}
+.btn{
+  font-family:var(--sans);font-size:13px;font-weight:600;
+  border-radius:7px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);
+  background:#fff;color:var(--ink);transition:.12s;
+}
+.btn:hover{background:var(--bg);}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff;}
+.btn.primary:hover{background:var(--navy-dark);}
+.btn.ghost{border-color:transparent;background:transparent;}
+.btn.ghost:hover{background:var(--bg);}
+.btn.danger{color:var(--rojo);border-color:var(--rojo-tint);}
+.btn.danger:hover{background:var(--rojo-tint);}
+.btn.sm{padding:5px 10px;font-size:12px;}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;}
+thead th{
+  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--ink-faint);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+tbody td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px;}
+tbody tr{cursor:pointer;transition:.1s;}
+tbody tr:hover{background:var(--navy-tint);}
+tbody tr:last-child td{border-bottom:none;}
+.proj-name{font-weight:600;color:var(--ink);}
+.proj-area{font-size:12px;color:var(--ink-soft);}
+.mono{font-family:var(--mono);font-size:12.5px;}
+.semaforo{display:inline-flex;align-items:center;gap:6px;}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.dot.verde{background:var(--verde);}
+.dot.ambar{background:var(--ambar);}
+.dot.rojo{background:var(--rojo);}
+.brecha{font-family:var(--mono);font-weight:600;}
+.brecha.pos{color:var(--verde);}
+.brecha.neg{color:var(--rojo);}
+.badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;display:inline-block;}
+.badge.activo{background:var(--navy-tint);color:var(--navy);}
+.badge.archivado{background:var(--bg);color:var(--ink-faint);}
+.progress-mini{width:70px;height:6px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative;}
+.progress-mini > div{height:100%;background:var(--navy);}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-faint);font-size:13px;}
+
+/* ---------- detail view ---------- */
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.detail-header h2{font-family:var(--disp);font-size:20px;margin:0 0 4px;}
+.detail-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--ink-soft);}
+.detail-meta b{color:var(--ink);font-weight:600;}
+
+/* meta chips - etiquetas de fácil lectura */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.mchip{display:flex;flex-direction:column;justify-content:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;min-width:96px;}
+.mchip .mc-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);font-weight:700;}
+.mchip .mc-value{font-size:13px;font-weight:700;color:var(--ink);margin-top:1px;white-space:nowrap;}
+.mchip.sem{flex-direction:row;align-items:center;gap:8px;}
+.mchip.sem .dot{width:11px;height:11px;}
+.mchip.verde{background:var(--verde-tint);border-color:transparent;}
+.mchip.verde .mc-value{color:var(--verde);}
+.mchip.ambar{background:var(--ambar-tint);border-color:transparent;}
+.mchip.ambar .mc-value{color:var(--ambar);}
+.mchip.rojo{background:var(--rojo-tint);border-color:transparent;}
+.mchip.rojo .mc-value{color:var(--rojo);}
+.mchip.qedit{cursor:pointer;transition:.12s;}
+.mchip.qedit:hover{box-shadow:0 0 0 2px var(--navy) inset;}
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start;}
+@media(max-width:860px){.grid2{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);}}
+
+/* gantt */
+.gantt-row{display:flex;align-items:center;gap:10px;padding:3px 0;border-bottom:1px solid var(--bg);}
+.gantt-row:last-child{border-bottom:none;}
+.gantt-row-editable{cursor:pointer;border-radius:5px;}
+.gantt-row-editable:hover{background:var(--navy-tint);}
+.gantt-label{width:230px;flex-shrink:0;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gantt-track{flex:1;height:13px;background:var(--bg);border-radius:4px;position:relative;min-width:400px;}
+.gantt-bar{position:absolute;top:0;height:100%;border-radius:4px;background:#AEB9CC;border:1px solid #8E9CB5;}
+.gantt-today{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--navy);z-index:2;}
+.gantt-axis-row{padding:0 0 4px;border-bottom:none;}
+.gantt-axis-track{height:16px;background:transparent;position:relative;min-width:400px;}
+.gantt-axis-tick{position:absolute;bottom:0;font-size:9.5px;color:var(--ink-faint);border-left:1px solid var(--border);padding-left:3px;height:100%;display:flex;align-items:flex-end;white-space:nowrap;}
+.gantt-wrap{overflow-x:auto;max-height:340px;overflow-y:auto;}
+
+/* hitos list */
+.hito-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg);font-size:13px;}
+.hito-item:last-child{border-bottom:none;}
+.hito-estado{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.hito-estado.pendiente{background:var(--border-strong);}
+.hito-estado.en_curso{background:var(--ambar);}
+.hito-estado.completado{background:var(--verde);}
+.hito-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--border-strong);}
+.hito-fecha{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
+
+/* risk / support */
+.tag-item{padding:9px 0;border-bottom:1px solid var(--bg);font-size:13px;}
+.tag-item:last-child{border-bottom:none;}
+.nivel{font-size:10.5px;font-weight:700;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-right:8px;}
+.nivel.alto{background:var(--rojo-tint);color:var(--rojo);}
+.nivel.medio{background:var(--ambar-tint);color:var(--ambar);}
+.nivel.bajo{background:var(--verde-tint);color:var(--verde);}
+
+/* budget */
+.budget-bar-track{height:10px;background:var(--bg);border-radius:5px;overflow:hidden;margin:8px 0 4px;}
+.budget-bar-fill{height:100%;background:var(--navy);}
+.budget-nums{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);}
+.budget-nums b{color:var(--ink);font-family:var(--mono);}
+
+/* history log */
+.log-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg);font-size:12.5px;}
+.log-item:last-child{border-bottom:none;}
+.log-avatar{width:26px;height:26px;border-radius:50%;background:var(--navy-tint);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.log-meta{color:var(--ink-faint);font-size:11.5px;}
+
+/* form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid.full{grid-template-columns:1fr;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+.field select,.field input,.field textarea{width:100%;}
+.subsection{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.subsection-title{font-size:12.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
+.repeat-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+.repeat-row > *{flex:1;}
+.repeat-row .btn{flex:0;}
+
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(20,25,35,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto;}
+.modal{background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:calc(100vh - 80px);overflow-y:auto;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:14px 14px 0 0;}
+.modal-head h3{font-family:var(--disp);font-size:16px;margin:0;}
+.modal-body{padding:18px 20px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);}
+
+/* update seguimiento */
+.follow-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bg);}
+.follow-row:last-child{border-bottom:none;}
+.follow-name{font-weight:600;font-size:13px;width:150px;flex-shrink:0;}
+.follow-projects{font-size:12px;color:var(--ink-soft);flex:1;}
+.follow-days{font-family:var(--mono);font-size:12.5px;font-weight:600;width:110px;text-align:right;}
+
+.hidden{display:none !important;}
+.small-note{font-size:12px;color:var(--ink-faint);margin-top:10px;}
+a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
+
+/* timeline view */
+.timeline-wrap{overflow-x:auto;position:relative;}
+.timeline-axis-row{display:flex;align-items:flex-end;margin-bottom:8px;position:sticky;top:0;background:var(--panel);z-index:3;}
+.timeline-row{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--bg);cursor:pointer;}
+.timeline-row:hover .timeline-label{background:var(--navy-tint);}
+.timeline-label{width:220px;flex-shrink:0;font-size:12px;padding-right:10px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;position:sticky;left:0;background:var(--panel);z-index:1;}
+.timeline-track{flex:1;height:20px;background:var(--bg);border-radius:4px;position:relative;min-width:900px;}
+.timeline-axis{background:transparent;height:24px;}
+.timeline-tick{position:absolute;bottom:0;font-size:10.5px;color:var(--ink-soft);font-weight:600;transform:translateX(2px);white-space:nowrap;border-left:1px solid var(--border);padding-left:4px;height:100%;display:flex;align-items:flex-end;}
+.timeline-bar{position:absolute;top:2px;bottom:2px;border-radius:3px;cursor:default;}
+.timeline-bar.verde{background:var(--verde);}
+.timeline-bar.ambar{background:var(--ambar);}
+.timeline-bar.rojo{background:var(--rojo);}
+.timeline-today{position:absolute;top:0;bottom:0;width:2px;background:var(--navy);z-index:2;}
+
+/* project photo */
+.photo-upload-preview{width:130px;height:95px;object-fit:cover;border-radius:7px;border:1px solid var(--border-strong);}
+.project-photo-thumb{width:150px;height:105px;object-fit:cover;border-radius:9px;border:1px solid var(--border);cursor:zoom-in;transition:.15s;flex-shrink:0;}
+.project-photo-thumb:hover{opacity:.85;transform:scale(1.02);}
+.photo-placeholder{width:150px;height:105px;border-radius:9px;border:1px dashed var(--border-strong);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:11px;text-align:center;padding:8px;flex-shrink:0;}
+.lightbox-overlay{position:fixed;inset:0;background:rgba(10,14,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;padding:36px;cursor:zoom-out;}
+.lightbox-overlay img{max-width:100%;max-height:90vh;border-radius:8px;box-shadow:0 12px 44px rgba(0,0,0,.55);}
+.lightbox-caption{color:#fff;font-size:13px;margin-top:12px;opacity:.85;}
+
+/* login */
+.login-wrap{max-width:420px;margin:60px auto;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:32px;}
+.login-wrap h1{font-family:var(--disp);font-size:19px;margin:0 0 6px;}
+.login-wrap p{color:var(--ink-soft);font-size:13px;margin:0 0 20px;}
+.login-wrap .field{margin-bottom:14px;}
+.login-note{font-size:11.5px;color:var(--ink-faint);margin-top:16px;line-height:1.5;}
+
+/* user chip + sync */
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px;}
+.user-chip .log-avatar{width:22px;height:22px;font-size:10px;}
+.sync-row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-faint);margin-top:8px;justify-content:flex-end;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--verde);display:inline-block;}
+.readonly-note{font-size:12px;color:var(--ink-faint);background:var(--bg);border-radius:7px;padding:8px 12px;margin-top:4px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { initializeApp } from "https://cdn.jsdelivr.net/npm/firebase@10.14.1/app/+esm";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://cdn.jsdelivr.net/npm/firebase@10.14.1/firestore/+esm";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://cdn.jsdelivr.net/npm/firebase@10.14.1/auth/+esm";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBRWU0OhnZZwb7yJMHZRLbzHSAuqCXM91k",
+  authDomain: "steerco-control.firebaseapp.com",
+  projectId: "steerco-control",
+  storageBucket: "steerco-control.firebasestorage.app",
+  messagingSenderId: "822103930617",
+  appId: "1:822103930617:web:9f2788c617f270f37a5428"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const FB_COLLECTION = 'steercoData';
+
+let fbReady = new Promise((resolve, reject) => {
+  onAuthStateChanged(auth, (user) => { if(user) resolve(user); });
+  signInAnonymously(auth).catch(reject);
+});
+
+async function fbGetDoc(id){
+  await fbReady;
+  const snap = await getDoc(doc(db, FB_COLLECTION, id));
+  return snap.exists() ? snap.data() : null;
+}
+async function fbSetDoc(id, value){
+  await fbReady;
+  await setDoc(doc(db, FB_COLLECTION, id), { value: value, updatedAt: Date.now() });
+}
+function fbListen(id, callback){
+  return onSnapshot(doc(db, FB_COLLECTION, id), (snap) => {
+    if(snap.exists()) callback(snap.data());
+  }, (err) => { console.error('Error de sincronización en vivo:', err); });
+}
+
+const STORAGE_KEY = 'projects-v1';
+let STATE = {
+  view: 'list',
+  selectedId: null,
+  filterArea: 'todas',
+  filterEstado: 'activo',
+  filterSemaforo: 'todos',
+  filterAlerta: 'todos',
+  loading: true,
+  projects: []
+};
+
+const AREAS_KEY = 'areas-v1';
+const AREAS_SEED = ['Gerencia de Proyectos'];
+const EXCELENCIA_PASSWORD = 'Excelencia OEMS';
+const ETAPAS = ['Conceptual','Pre-Factibilidad','Factibilidad','Estudio','Ejecución'];
+STATE.areas = [];
+const USER_KEY = 'current-user-v1';
+const DIRECTORIO_KEY = 'directorio-v1';
+const DIRECTORIO_SEED = [
+  {nombre:'Jaime Rivera', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'Víctor Parraguez', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'Sergio Segovia', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'José Barraza', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'Fernando Monsalve', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'Emerson Campusano', area:'Gerencia de Proyectos', rol:'area'},
+  {nombre:'Excelencia Operacional', area:'Todas', rol:'excelencia'}
+];
+STATE.directorio = [];
+STATE.currentUser = null;
+STATE.lastSync = null;
+STATE.polling = false;
+STATE.loginSelected = '';
+STATE.loginError = '';
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
+function fmtDate(d){ if(!d) return '—'; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtBrecha(brecha){ const n = Number(brecha)||0; return (n>=0?'+':'') + n.toFixed(1) + '%'; }
+
+function buildTimeTicks(minD, maxD){
+  const totalDays = Math.max(1, daysBetween(minD, maxD));
+  let granularity = totalDays <= 400 ? 'month' : totalDays <= 1500 ? 'quarter' : 'year';
+  const ticks = [];
+  const endD = new Date(maxD+'T00:00:00');
+  let cursor;
+  if(granularity === 'month'){
+    cursor = new Date(minD+'T00:00:00'); cursor.setDate(1);
+    while(cursor <= endD){
+      ticks.push({date: cursor.toISOString().slice(0,10), label: cursor.toLocaleDateString('es-CL',{month:'short',year:'2-digit'})});
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+    }
+  } else if(granularity === 'quarter'){
+    const d0 = new Date(minD+'T00:00:00');
+    cursor = new Date(d0.getFullYear(), Math.floor(d0.getMonth()/3)*3, 1);
+    while(cursor <= endD){
+      const q = Math.floor(cursor.getMonth()/3)+1;
+      ticks.push({date: cursor.toISOString().slice(0,10), label: `Q${q} ${cursor.getFullYear()}`});
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+3, 1);
+    }
+  } else {
+    const d0 = new Date(minD+'T00:00:00');
+    cursor = new Date(d0.getFullYear(), 0, 1);
+    while(cursor <= endD){
+      ticks.push({date: cursor.toISOString().slice(0,10), label: String(cursor.getFullYear())});
+      cursor = new Date(cursor.getFullYear()+1, 0, 1);
+    }
+  }
+  return {ticks, totalDays, granularity};
+}
+function fmtMoney(n){ if(n===undefined||n===null||n==='') return '—'; return '$' + Number(n).toLocaleString('es-CL'); }
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function seedData(){
+  return [
+    {
+      id: uid('proj'), numero:1, nombre:"Fase 12 Estanque de Ácido Lomas 1", area:"Gerencia de Proyectos", responsable:"Jaime Rivera (Líder) / Víctor Parraguez (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-05-30", fechaInicio:"2026-05-30", fechaTermino:"2027-01-30",
+      avanceReal:65, avancePlan:68.5, estado:"activo", presupuesto:24850000, ejecutado:14900000,
+      alerta:{color:"ambar", comentario:"Avance físico levemente bajo el plan (-3,5pp); requiere acreditación acelerada de MPM y apoyo en TIE IN eléctrico."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Montaje y Prueba Estanque",inicio:"2026-01-01",fin:"2026-03-31"},
+             {id:uid('h'),nombre:"Obras Civiles",inicio:"2026-02-28",fin:"2026-07-31"},
+             {id:uid('h'),nombre:"Eléctrico e Instrumentación",inicio:"2026-01-01",fin:"2026-11-15"},
+             {id:uid('h'),nombre:"Inicio Trabajo en Terreno MPM",inicio:"2026-08-02",fin:"2026-08-15"},
+             {id:uid('h'),nombre:"Construcción Piscina",inicio:"2026-08-15",fin:"2026-09-01"},
+             {id:uid('h'),nombre:"Estructura y Piping",inicio:"2026-08-15",fin:"2026-11-15"},
+             {id:uid('h'),nombre:"PEM",inicio:"2026-09-30",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2026-11-30",fin:"2027-01-01"},
+             {id:uid('h'),nombre:"Desarme Estanques",inicio:"2026-09-19",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Área Libre de Inchancables",inicio:"2026-10-31",fin:"2026-11-30"}],
+      riesgos:[{id:uid('r'),descripcion:"Tener al menos un estanque operativo antes del 15-10-2026",nivel:"medio"},
+               {id:uid('r'),descripcion:"Liberar el área de inchancables antes del 30-11-2026",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Acreditación acelerada de la empresa MPM — inicio programado el 10 de agosto."},
+              {id:uid('a'),descripcion:"Apoyo requerido en TIE IN eléctrico y puesta en marcha."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 65% vs 68,5% plan."}]
+    },
+    {
+      id: uid('proj'), numero:2, nombre:"ILS Lomas 1", area:"Gerencia de Proyectos", responsable:"Jaime Rivera (Líder) / Víctor Parraguez (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-06-30", fechaInicio:"2026-06-30", fechaTermino:"2027-01-30",
+      avanceReal:35.48, avancePlan:81.8, estado:"activo", presupuesto:15190000, ejecutado:5530000,
+      alerta:{color:"rojo", comentario:"Avance físico muy por debajo del plan (-46,3pp) y caso de falsificación de acreditaciones en investigación."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Obras Cviles",inicio:"2026-06-08",fin:"2026-08-10"},
+             {id:uid('h'),nombre:"Piping Riego Fase 9",inicio:"2026-06-18",fin:"2026-08-20"},
+             {id:uid('h'),nombre:"Piping Riego Fase 8",inicio:"2026-08-17",fin:"2026-09-16"},
+             {id:uid('h'),nombre:"Montaje Manifold Acero",inicio:"2026-07-31",fin:"2026-08-20"},
+             {id:uid('h'),nombre:"Montaje Conjunto Balsa+Bomba",inicio:"2026-07-31",fin:"2026-08-20"},
+             {id:uid('h'),nombre:"Movilización Empresa Eléctrica",inicio:"2026-08-05",fin:"2026-08-25"},
+             {id:uid('h'),nombre:"Trabajos Eléctricos",inicio:"2026-08-25",fin:"2026-09-30"},
+             {id:uid('h'),nombre:"Inyección de acidulado",inicio:"2026-07-31",fin:"2026-08-20"},
+             {id:uid('h'),nombre:"Cierre Estación Acidulado",inicio:"2026-11-30",fin:"2026-12-20"},
+             {id:uid('h'),nombre:"Cierre Estación Booster",inicio:"2026-08-10",fin:"2027-01-19"}],
+      riesgos:[{id:uid('r'),descripcion:"Falsificación de exámenes para acreditación de personal, en investigación; se detuvieron los nuevos ingresos.",nivel:"alto"}],
+      apoyos:[{id:uid('a'),descripcion:"Adjudicación de servicios eléctricos y piping; apoyo en TIE IN y puesta en marcha (fines de septiembre)."},
+              {id:uid('a'),descripcion:"En revisión de RAE por el sistema booster de riego Fase 8; se requiere proyecto de infraestructura eléctrica en Lomas 1."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 35,5% vs 81,8% plan."}]
+    },
+    {
+      id: uid('proj'), numero:3, nombre:"Interferencias Fase 12 Lomas 1", area:"Gerencia de Proyectos", responsable:"Sergio Segovia (Líder) / Víctor Parraguez (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-10-19", fechaInicio:"2026-10-19", fechaTermino:"2026-11-17",
+      avanceReal:26.5, avancePlan:62.5, estado:"activo", presupuesto:6230000, ejecutado:1000000,
+      alerta:{color:"rojo", comentario:"Avance físico 36pp bajo el plan; requiere acreditación acelerada y apoyo en conducción mina para contratistas."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Tendido de línea eléctrica",inicio:"2026-08-26",fin:"2026-10-11"},
+             {id:uid('h'),nombre:"Tendido de fibra óptica",inicio:"2026-09-13",fin:"2026-09-28"},
+             {id:uid('h'),nombre:"Construcción de bancoducto",inicio:"2026-09-11",fin:"2026-09-18"},
+             {id:uid('h'),nombre:"Tendido de línea eléctrica",inicio:"2026-08-26",fin:"2026-09-12"},
+             {id:uid('h'),nombre:"Montaje y canalización de subestación",inicio:"2026-08-16",fin:"2026-10-17"},
+             {id:uid('h'),nombre:"Línea 73-OHL-001",inicio:"2026-09-28",fin:"2026-10-11"},
+             {id:uid('h'),nombre:"Línea 73-OHL-002",inicio:"2026-10-04",fin:"2026-10-15"},
+             {id:uid('h'),nombre:"Línea 73-OHL-005",inicio:"2026-10-11",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Línea 73-OHL-006",inicio:"2026-10-11",fin:"2026-10-13"},
+             {id:uid('h'),nombre:"Comisionamiento y PEM",inicio:"2026-10-11",fin:"2026-10-24"}],
+      riesgos:[{id:uid('r'),descripcion:"Detenciones a la operación previstas durante el segundo semestre.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Disponibilidad de tipo de cable para la ejecución de los trabajos."},
+              {id:uid('a'),descripcion:"Coordinación inter área para los TIE IN de área húmeda (oct-26) y seca (sep-26)."},
+              {id:uid('a'),descripcion:"Proceso acelerado de acreditación (10 de agosto) y apoyo en conducción mina para personal contratista."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 26,5% vs 62,5% plan."}]
+    },
+    {
+      id: uid('proj'), numero:4, nombre:"Mixer 5", area:"Gerencia de Proyectos", responsable:"Sergio Segovia (Líder) / Víctor Parraguez (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-05-30", fechaInicio:"2026-05-30", fechaTermino:"2026-12-30",
+      avanceReal:26.5, avancePlan:62.5, estado:"activo", presupuesto:2850000, ejecutado:1000000,
+      alerta:{color:"rojo", comentario:"Avance físico 36pp bajo el plan; entrega comprometida para marzo 2026 ya desfasada."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Montaje y puesta en servicio",inicio:"2026-01-17",fin:"2026-05-30"},
+             {id:uid('h'),nombre:"Proceso de compras",inicio:"2026-08-02",fin:"2026-09-26"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2026-09-26",fin:"2026-11-15"},
+             {id:uid('h'),nombre:"Licitación Construcción",inicio:"2026-07-31",fin:"2026-10-17"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2026-10-17",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-10-31",fin:"2026-12-13"},
+             {id:uid('h'),nombre:"Comisionamiento y PEM",inicio:"2026-12-13",fin:"2026-12-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Entrega del proyecto comprometida para marzo 2026; ya en desfase respecto al plan original.",nivel:"alto"}],
+      apoyos:[{id:uid('a'),descripcion:"Aprobación de RAE para continuar los trabajos constructivos."},
+              {id:uid('a'),descripcion:"Compras y construcción programadas durante 2026."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 26,5% vs 62,5% plan."}]
+    },
+    {
+      id: uid('proj'), numero:5, nombre:"Pila HEAP Fase 8 Lomas 1", area:"Gerencia de Proyectos", responsable:"José Barraza (Líder) / Emerson Campusano (Control)", etapa:"Conceptual",
+      fechaRequerimiento:"2026-10-31", fechaInicio:"2026-10-31", fechaTermino:"2029-04-15",
+      avanceReal:22.3, avancePlan:22.3, estado:"activo", presupuesto:68600000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"Proyecto fuera de budget; a la espera de aprobación del LOA, sin capitales aprobados a la fecha."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Conceptual",inicio:"2026-02-01",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"PFS + FS",inicio:"2027-01-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2026-09-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2027-04-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2027-06-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-09-01",fin:"2029-02-15"},
+             {id:uid('h'),nombre:"Contrato Principal",inicio:"2027-05-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Lastre Mina",inicio:"2027-05-01",fin:"2027-09-30"},
+             {id:uid('h'),nombre:"Fabricación y PEM Super RAM",inicio:"2027-09-01",fin:"2028-06-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-09-01",fin:"2029-02-15"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2029-04-15",fin:"2029-04-15"}],
+      riesgos:[{id:uid('r'),descripcion:"Construcción sobre pilas abandonadas del sector operativo.",nivel:"medio"},
+               {id:uid('r'),descripcion:"Se debe asegurar al menos 6 meses de detención del riego en el sector abandonado.",nivel:"medio"},
+               {id:uid('r'),descripcion:"Proyecto incorporado en LOA 26, en proceso de aprobación; sin capitales aprobados a la fecha.",nivel:"alto"}],
+      apoyos:[{id:uid('a'),descripcion:"Pendiente aprobación del LOA."},
+              {id:uid('a'),descripcion:"Se requiere proyecto de infraestructura eléctrica en Lomas 1 por etapa (monto total 7,1 mUSD)."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 22,3%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:6, nombre:"Pila ROM Fase 3C Lomas 2", area:"Gerencia de Proyectos", responsable:"Jaime Rivera (Líder) / Víctor Parraguez (Control)", etapa:"Factibilidad",
+      fechaRequerimiento:"2026-07-31", fechaInicio:"2026-07-31", fechaTermino:"2028-05-31",
+      avanceReal:100, avancePlan:100, estado:"activo", presupuesto:56970000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"Avance en línea con el plan, pero se requiere solicitar montos para compras tempranas (LLI) en etapa de factibilidad."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Conceptual+PFS",inicio:"2026-07-31",fin:"2026-07-31"},
+             {id:uid('h'),nombre:"Ingenieria Conceptual",inicio:"2026-06-30",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-07-31",fin:"2026-07-31"},
+             {id:uid('h'),nombre:"Factibilidad",inicio:"2027-03-31",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2026-06-01",fin:"2027-02-14"},
+             {id:uid('h'),nombre:"Contrato Principal",inicio:"2026-09-14",fin:"2027-04-30"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2026-11-02",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2027-05-31",fin:"2027-05-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-04-01",fin:"2028-03-31"},
+             {id:uid('h'),nombre:"Lastre Mina",inicio:"2027-01-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Fabricación LLI",inicio:"2027-04-01",fin:"2027-12-31"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-05-01",fin:"2028-03-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-05-31",fin:"2028-05-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Aporte de lastre por parte de la mina para mejora de talud y producción de cover.",nivel:"medio"},
+               {id:uid('r'),descripcion:"Depende de la línea eléctrica del proyecto de infraestructura eléctrica para su conexión.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Se requiere solicitar montos para adjudicación de compras tempranas (LLI) en etapa de factibilidad."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 100%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:7, nombre:"Pila ROM Fase 10 Lomas 1", area:"Gerencia de Proyectos", responsable:"Sergio Segovia (Líder) / Víctor Parraguez (Control)", etapa:"Conceptual",
+      fechaRequerimiento:"2026-10-31", fechaInicio:"2026-10-31", fechaTermino:"2028-09-21",
+      avanceReal:54.06, avancePlan:63.36, estado:"activo", presupuesto:43980000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"Avance físico 9,3pp bajo el plan; proyecto fuera de budget a la espera de aprobación del LOA."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Conceptual",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Ingenieria Conceptual",inicio:"2026-09-30",fin:"2026-09-30"},
+             {id:uid('h'),nombre:"Ingenieria Interferencias",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"FPFS +  FS",inicio:"2027-06-30",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2026-07-16",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Interferencias",inicio:"2026-11-01",fin:"2027-07-01"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2027-04-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2027-06-30",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-07-01",fin:"2028-06-30"},
+             {id:uid('h'),nombre:"Lastre Mina",inicio:"2027-07-01",fin:"2027-10-31"},
+             {id:uid('h'),nombre:"Fabricación LLI",inicio:"2027-07-01",fin:"2028-04-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-04-01",fin:"2028-06-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-08-31",fin:"2028-08-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Limitaciones de espacio por falda de cerro y camino MINSAL (B-385).",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Aprobación del LOA."},
+              {id:uid('a'),descripcion:"Se requiere proyecto de infraestructura eléctrica en Lomas 1 por etapa (monto total 7,1 mUSD)."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 54,1% vs 63,4% plan."}]
+    },
+    {
+      id: uid('proj'), numero:8, nombre:"Piscina ILS Lomas 2", area:"Gerencia de Proyectos", responsable:"Jaime Rivera (Líder) / Víctor Parraguez (Control)", etapa:"Factibilidad",
+      fechaRequerimiento:"2026-10-31", fechaInicio:"2026-10-31", fechaTermino:"2027-08-31",
+      avanceReal:59.41, avancePlan:59.41, estado:"activo", presupuesto:16010000, ejecutado:450000,
+      alerta:{color:"ambar", comentario:"Programación muy ajustada; se requiere priorizar este proyecto frente a otros y adelantar montos para compras tempranas."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Factibilidad",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2025-07-01",fin:"2026-09-15"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2026-09-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-11-01",fin:"2027-07-31"},
+             {id:uid('h'),nombre:"Fabricación LLI",inicio:"2026-12-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"DIA TTM",inicio:"2026-11-30",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-09-01",fin:"2027-07-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-08-31",fin:"2027-08-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende de la línea eléctrica del proyecto de infraestructura eléctrica para su conexión.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Programación muy ajustada; se requiere priorizar frente a otros proyectos."},
+              {id:uid('a'),descripcion:"Se requiere solicitar montos (RAE, adelanto de capital desde ejecución) para compras tempranas (LLI)."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 59,4%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:9, nombre:"Pila ROM Fase 5.B Lomas 2", area:"Gerencia de Proyectos", responsable:"Jaime Rivera (Líder) / Víctor Parraguez (Control)", etapa:"Factibilidad",
+      fechaRequerimiento:"2026-08-31", fechaInicio:"2026-08-31", fechaTermino:"2027-08-31",
+      avanceReal:92.14, avancePlan:92.14, estado:"activo", presupuesto:15350000, ejecutado:1700000,
+      alerta:{color:"ambar", comentario:"Avance en línea con el plan, pero se requiere confirmar apoyo de la mina para el traslado de cover."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Factibilidad",inicio:"2025-10-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2025-10-01",fin:"2026-07-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-06-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-09-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Fabricación LLI",inicio:"2026-08-01",fin:"2027-04-30"},
+             {id:uid('h'),nombre:"DIA TTM",inicio:"2026-11-30",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-08-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-08-31",fin:"2027-08-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende del traslado de cover desde Pila HEAP a Lomas 2 por parte de la mina, en la temporalidad requerida.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Confirmar apoyo de la mina en el traslado de cover producido desde Pila HEAP en la temporalidad requerida."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 92,1%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:10, nombre:"Potenciamiento Riego HEAP Lomas 1", area:"Gerencia de Proyectos", responsable:"José Barraza (Líder) / Emerson Campusano (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2026-08-31", fechaInicio:"2026-08-31", fechaTermino:"2028-01-30",
+      avanceReal:45.72, avancePlan:78.53, estado:"activo", presupuesto:9485000, ejecutado:103000,
+      alerta:{color:"rojo", comentario:"Avance físico 32,8pp bajo el plan; se requiere analizar disponibilidad eléctrica del área."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2025-12-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2025-12-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-06-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-09-01",fin:"2027-11-30"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2026-09-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-09-01",fin:"2027-11-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-12-31",fin:"2027-12-31"}],
+      riesgos:[],
+      apoyos:[{id:uid('a'),descripcion:"Se requiere analizar la disponibilidad eléctrica del área para el proyecto."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 45,7% vs 78,5% plan."}]
+    },
+    {
+      id: uid('proj'), numero:11, nombre:"Gestión de Polvo", area:"Gerencia de Proyectos", responsable:"José Barraza (Líder) / Emerson Campusano (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2029-12-31", fechaInicio:"2029-12-31", fechaTermino:"2029-12-31",
+      avanceReal:0, avancePlan:0, estado:"activo", presupuesto:6800000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"El gasto de capital 2026 de esta iniciativa depende de la ejecución de Cachimba Lomas 1."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Ejecución (iniciativas 2027-2029)",inicio:"2026-08-04",fin:"2029-12-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Iniciativa aún en análisis, en revisión caso a caso.",nivel:"bajo"}],
+      apoyos:[{id:uid('a'),descripcion:"El gasto de capital 2026 de esta iniciativa depende de la ejecución del proyecto Cachimba Lomas 1."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): en revisión de iniciativas 2027-2029."}]
+    },
+    {
+      id: uid('proj'), numero:12, nombre:"Cachimba Lomas 1", area:"Gerencia de Proyectos", responsable:"José Barraza (Líder) / Emerson Campusano (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-05-31", fechaInicio:"2026-05-31", fechaTermino:"2027-01-31",
+      avanceReal:17.19, avancePlan:19.24, estado:"activo", presupuesto:1600000, ejecutado:400000,
+      alerta:{color:"verde", comentario:""}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2026-01-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2026-01-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-04-13",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-06-01",fin:"2026-12-31"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2026-06-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-06-01",fin:"2026-12-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-01-31",fin:"2027-01-31"}],
+      riesgos:[],
+      apoyos:[{id:uid('a'),descripcion:"Gasto de capital 2026 sujeto a la ejecución de este proyecto."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 17,2% vs 19,2% plan."}]
+    },
+    {
+      id: uid('proj'), numero:13, nombre:"Acondicionamiento Phase 1 ROM Lomas 2", area:"Gerencia de Proyectos", responsable:"José Barraza (Líder) / Emerson Campusano (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2027-02-28", fechaInicio:"2027-02-28", fechaTermino:"2028-04-10",
+      avanceReal:0, avancePlan:2.07, estado:"activo", presupuesto:7720000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"A la espera de aprobación del LOA para iniciar licitación de ingeniería; depende del transporte de ripio por parte de mina."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2026-07-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Creación del Proyecto",inicio:"2026-07-01",fin:"2026-07-31"},
+             {id:uid('h'),nombre:"Ingenieria B+D",inicio:"2026-08-01",fin:"2026-12-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2027-01-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-03-01",fin:"2028-01-15"},
+             {id:uid('h'),nombre:"Suministros LLI",inicio:"2027-01-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Contrato Principal",inicio:"2027-01-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2027-07-01",fin:"2027-08-15"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-08-16",fin:"2028-01-15"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-01-16",fin:"2028-03-15"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende del transporte de ripio lixiviado desde Pila HEAP en la temporalidad del proyecto.",nivel:"medio"},
+               {id:uid('r'),descripcion:"El proyecto no considera la producción de cover a partir del ripio lixiviado, solo su instalación.",nivel:"bajo"}],
+      apoyos:[{id:uid('a'),descripcion:"Transporte de ripio lixiviado por parte del área mina."},
+              {id:uid('a'),descripcion:"Aprobación de LOA para inicio de licitación de ingeniería."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 0% vs 2,1% plan, etapa de estudio."}]
+    },
+    {
+      id: uid('proj'), numero:14, nombre:"Infraestructura Eléctrica Lomas 2", area:"Gerencia de Proyectos", responsable:"Sergio Segovia (Líder) / Víctor Parraguez (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2026-09-30", fechaInicio:"2026-09-30", fechaTermino:"2027-09-29",
+      avanceReal:58.47, avancePlan:58.47, estado:"activo", presupuesto:6520000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"Este proyecto alimenta eléctricamente a Pila 3C, Piscina ILS Lomas II, Booster Acidulado y Pila 5B; un atraso aquí impacta especialmente a ILS Lomas 2."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2026-01-01",fin:"2026-09-30"},
+             {id:uid('h'),nombre:"Ingenieria B-D",inicio:"2026-01-01",fin:"2026-08-14"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2026-09-01",fin:"2027-01-31"},
+             {id:uid('h'),nombre:"Licitación Contrato",inicio:"2026-09-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-09-01",fin:"2026-09-30"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-10-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2026-12-01",fin:"2027-01-17"},
+             {id:uid('h'),nombre:"Frente 1 : ILS 2",inicio:"2027-01-18",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Frente 2 : Acidulado",inicio:"2027-04-01",fin:"2027-04-30"},
+             {id:uid('h'),nombre:"Intervención S/E Fortuna",inicio:"2027-05-03",fin:"2027-05-03"},
+             {id:uid('h'),nombre:"Frente 3 : Pila 3C",inicio:"2027-05-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-08-31",fin:"2027-08-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Debe finalizar antes que los proyectos que alimenta; un atraso genera desfase en cada uno de ellos.",nivel:"alto"}],
+      apoyos:[{id:uid('a'),descripcion:"Un atraso en este proyecto puede impactar al proyecto Piscina ILS Lomas 2, que es más temprano y afecta la operación."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 58,5%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:15, nombre:"Mejora Sistema Riego Refino Lomas 2", area:"Gerencia de Proyectos", responsable:"Sergio Segovia (Líder) / Víctor Parraguez (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2026-06-30", fechaInicio:"2026-06-30", fechaTermino:"2027-07-01",
+      avanceReal:59.46, avancePlan:100, estado:"activo", presupuesto:2296000, ejecutado:21000,
+      alerta:{color:"rojo", comentario:"Avance físico 40,5pp bajo el plan; se requiere iniciar la compra de tuberías cuanto antes."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2025-10-20",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Ingenieria Básica",inicio:"2025-10-20",fin:"2026-04-30"},
+             {id:uid('h'),nombre:"Ingeniería de Detalles",inicio:"2026-05-01",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-06-01",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-07-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Licitación Ctto Principal",inicio:"2026-07-01",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2026-07-01",fin:"2027-01-03"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2026-11-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2026-12-01",fin:"2027-02-14"},
+             {id:uid('h'),nombre:"Puesta en Marcha",inicio:"2027-02-15",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-04-30",fin:"2027-04-30"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende de una línea eléctrica aérea.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Iniciar cuanto antes el proceso de compra de tuberías."},
+              {id:uid('a'),descripcion:"En proceso de cambio de etapa en Service Now."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 59,5% vs 100% plan."}]
+    },
+    {
+      id: uid('proj'), numero:16, nombre:"Mixer 6 Lomas 1", area:"Gerencia de Proyectos", responsable:"Sin asignar (Líder) / Sin asignar (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2027-03-30", fechaInicio:"2027-03-30", fechaTermino:"2028-03-31",
+      avanceReal:4.67, avancePlan:4.67, estado:"activo", presupuesto:3000000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"Aún no tiene líder ni control de proyecto asignado — pendiente definir responsable."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2026-04-22",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Ing Básica + Detalle",inicio:"2026-04-22",fin:"2027-01-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2027-02-01",fin:"2027-04-01"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-04-01",fin:"2027-04-01"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2027-02-01",fin:"2027-10-20"},
+             {id:uid('h'),nombre:"Licitación Ctto Principal",inicio:"2027-04-01",fin:"2027-07-22"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2027-07-22",fin:"2027-09-15"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-09-15",fin:"2028-01-13"},
+             {id:uid('h'),nombre:"Puesta en Marcha",inicio:"2028-01-13",fin:"2028-01-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-03-31",fin:"2028-03-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende de una línea eléctrica aérea.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Se requiere analizar la disponibilidad eléctrica del área para el proyecto."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 4,7%, igual al plan."}]
+    },
+    {
+      id: uid('proj'), numero:17, nombre:"Relocalización Comedor y Oficinas Mina Lomas 2", area:"Gerencia de Proyectos", responsable:"Fernando Monsalve (Líder) / Emerson Campusano (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2027-02-01", fechaInicio:"2027-02-01", fechaTermino:"2028-10-15",
+      avanceReal:0, avancePlan:8.61, estado:"activo", presupuesto:2791000, ejecutado:0,
+      alerta:{color:"ambar", comentario:"A la espera de aprobación del LOA para iniciar licitación de ingeniería."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2026-07-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Ing Básica + Detalle",inicio:"2026-07-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Suministros - Instalación",inicio:"2026-12-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Suministros - Comedor",inicio:"2026-12-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-12-01",fin:"2027-02-28"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2027-03-01",fin:"2028-04-30"},
+             {id:uid('h'),nombre:"Fabricación Instalación",inicio:"2027-02-28",fin:"2027-08-30"},
+             {id:uid('h'),nombre:"Fabricación Comedor",inicio:"2027-03-01",fin:"2028-01-31"},
+             {id:uid('h'),nombre:"Licitación Ctto Principal",inicio:"2027-03-01",fin:"2027-08-31"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2027-08-31",fin:"2027-10-31"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-11-01",fin:"2028-04-14"},
+             {id:uid('h'),nombre:"Puesta en Marcha",inicio:"2028-04-15",fin:"2028-04-30"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-05-01",fin:"2028-06-30"}],
+      riesgos:[{id:uid('r'),descripcion:"Requiere definir mobiliario del comedor y oficinas.",nivel:"bajo"}],
+      apoyos:[{id:uid('a'),descripcion:"Aprobación de LOA para inicio de proceso de licitación de ingeniería."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 0% vs 8,6% plan, etapa de estudio."}]
+    },
+    {
+      id: uid('proj'), numero:18, nombre:"Mejora Sistema de Bombeo Acidulado Lomas 2", area:"Gerencia de Proyectos", responsable:"Fernando Monsalve (Líder) / Emerson Campusano (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2026-06-30", fechaInicio:"2026-06-30", fechaTermino:"2027-03-31",
+      avanceReal:88.31, avancePlan:100, estado:"activo", presupuesto:2436000, ejecutado:205000,
+      alerta:{color:"ambar", comentario:"Avance físico 11,7pp bajo el plan; iniciar cuanto antes la compra de tuberías."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2025-11-01",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Estudios Previos",inicio:"2025-12-31",fin:"2025-12-31"},
+             {id:uid('h'),nombre:"Ing Básica + Detalle",inicio:"2025-11-01",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-05-01",fin:"2026-06-30"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-07-01",fin:"2026-07-01"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2026-07-01",fin:"2027-03-31"},
+             {id:uid('h'),nombre:"Licitación Ctto Principal",inicio:"2026-07-01",fin:"2026-11-30"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2026-12-01",fin:"2027-01-31"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-02-01",fin:"2027-04-30"},
+             {id:uid('h'),nombre:"Puesta en Marcha",inicio:"2027-05-01",fin:"2027-05-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2027-06-30",fin:"2027-06-30"}],
+      riesgos:[{id:uid('r'),descripcion:"Depende de una línea eléctrica.",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Iniciar proceso de compra de tuberías."},
+              {id:uid('a'),descripcion:"En proceso de cambio de etapa en Service Now."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 88,3% vs 100% plan."}]
+    },
+    {
+      id: uid('proj'), numero:19, nombre:"Normalización del Patio de Residuos Transitorios Lomas 1", area:"Gerencia de Proyectos", responsable:"Fernando Monsalve (Líder) / Emerson Campusano (Control)", etapa:"Estudio",
+      fechaRequerimiento:"2026-05-31", fechaInicio:"2026-05-31", fechaTermino:"2027-02-25",
+      avanceReal:84.71, avancePlan:100, estado:"activo", presupuesto:350000, ejecutado:0,
+      alerta:{color:"rojo", comentario:"Avance físico 15,3pp bajo el plan; se requiere apoyo del área mina a la brevedad."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2025-11-10",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Ingeniería",inicio:"2025-11-10",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Licitación Cierre Perimetral",inicio:"2026-04-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Licitación Limpieza",inicio:"2026-04-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Licitación Restauración",inicio:"2026-04-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-04-01",fin:"2026-05-31"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-06-01",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Ctto Cierre Perimetral",inicio:"2026-06-01",fin:"2026-09-30"},
+             {id:uid('h'),nombre:"Ctto Limpieza",inicio:"2026-06-01",fin:"2026-08-31"},
+             {id:uid('h'),nombre:"Ctto Restauración",inicio:"2026-06-01",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2026-12-31",fin:"2026-12-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Requiere definir alcance previo para iniciar los trabajos de cierre perimetral (información incompleta en la fuente original).",nivel:"medio"}],
+      apoyos:[{id:uid('a'),descripcion:"Inicio a la brevedad de los apoyos del área mina; término de trabajos de mina requerido para octubre 2026."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 84,7% vs 100% plan."}]
+    },
+    {
+      id: uid('proj'), numero:20, nombre:"Dique El Boquete Lomas 1", area:"Gerencia de Proyectos", responsable:"Fernando Monsalve (Líder) / Emerson Campusano (Control)", etapa:"Ejecución",
+      fechaRequerimiento:"2026-04-30", fechaInicio:"2026-04-30", fechaTermino:"2027-02-28",
+      avanceReal:5.84, avancePlan:5.84, estado:"activo", presupuesto:5650000, ejecutado:67000,
+      alerta:{color:"rojo", comentario:"Proyecto comprometido para 2026 se desplaza a 2028 por desfase de capitales; licitación de construcción detenida."}, imagen:null,
+      hitos:[{id:uid('h'),nombre:"Estudios",inicio:"2025-09-01",fin:"2026-04-30"},
+             {id:uid('h'),nombre:"Ingeniería Básica",inicio:"2025-09-01",fin:"2026-04-30"},
+             {id:uid('h'),nombre:"Gating",inicio:"2026-04-01",fin:"2026-04-30"},
+             {id:uid('h'),nombre:"Ejecución",inicio:"2026-05-01",fin:"2028-10-31"},
+             {id:uid('h'),nombre:"Ingeniería Detalles",inicio:"2026-10-31",fin:"2026-10-31"},
+             {id:uid('h'),nombre:"Permiso Vialidad",inicio:"2026-10-01",fin:"2027-01-31"},
+             {id:uid('h'),nombre:"Suministros",inicio:"2027-10-31",fin:"2027-10-31"},
+             {id:uid('h'),nombre:"Ctto Licitación",inicio:"2027-04-30",fin:"2027-04-30"},
+             {id:uid('h'),nombre:"Movilización",inicio:"2027-05-01",fin:"2027-06-30"},
+             {id:uid('h'),nombre:"Construcción",inicio:"2027-07-01",fin:"2028-10-31"},
+             {id:uid('h'),nombre:"Contingencia",inicio:"2028-12-31",fin:"2028-12-31"}],
+      riesgos:[{id:uid('r'),descripcion:"Proyecto desfasado para 2028 en su etapa de construcción.",nivel:"alto"}],
+      apoyos:[{id:uid('a'),descripcion:"Requiere replanificar capitales dado el desplazamiento del proyecto a 2028."}],
+      historial:[{id:uid('l'),fecha:"2026-08-03",usuario:"Excelencia Operacional",cambio:"Cargado desde Estatus Gerencia de Proyecto (03-08-2026): avance físico 5,8%, igual al plan."}]
+    },
+  ];
+}
+
+async function loadData(){
+  try{
+    const res = await fbGetDoc(STORAGE_KEY);
+    STATE.projects = res && res.value ? JSON.parse(res.value) : seedData();
+    if(!res || !res.value){ await saveData(); }
+  }catch(e){
+    console.error('Error cargando proyectos:', e);
+    STATE.projects = seedData();
+    try{ await saveData(); }catch(e2){}
+  }
+  STATE.lastSync = Date.now();
+
+  try{
+    const d = await fbGetDoc(DIRECTORIO_KEY);
+    STATE.directorio = d && d.value ? JSON.parse(d.value) : DIRECTORIO_SEED.slice();
+    if(!d || !d.value){ await saveDirectorio(); }
+  }catch(e){
+    STATE.directorio = DIRECTORIO_SEED.slice();
+    try{ await saveDirectorio(); }catch(e2){}
+  }
+
+  try{
+    const a = await fbGetDoc(AREAS_KEY);
+    STATE.areas = a && a.value ? JSON.parse(a.value) : AREAS_SEED.slice();
+    if(!a || !a.value){ await saveAreas(); }
+  }catch(e){
+    STATE.areas = AREAS_SEED.slice();
+    try{ await saveAreas(); }catch(e2){}
+  }
+
+  try{
+    const stored = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+    STATE.currentUser = stored && STATE.directorio.find(d=>d.nombre===stored.nombre) ? stored : null;
+  }catch(e){
+    STATE.currentUser = null;
+  }
+
+  STATE.loading = false;
+  render();
+  startRealtimeSync();
+}
+
+async function saveData(){
+  try{
+    await fbSetDoc(STORAGE_KEY, JSON.stringify(STATE.projects));
+    STATE.lastSync = Date.now();
+  }catch(e){
+    console.error('No se pudo guardar', e);
+  }
+}
+
+async function saveDirectorio(){
+  try{
+    await fbSetDoc(DIRECTORIO_KEY, JSON.stringify(STATE.directorio));
+  }catch(e){
+    console.error('No se pudo guardar el directorio', e);
+  }
+}
+
+async function saveAreas(){
+  try{
+    await fbSetDoc(AREAS_KEY, JSON.stringify(STATE.areas));
+  }catch(e){
+    console.error('No se pudo guardar las áreas', e);
+  }
+}
+
+function startRealtimeSync(){
+  if(STATE.polling) return;
+  STATE.polling = true;
+  fbListen(STORAGE_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    const current = JSON.stringify(STATE.projects);
+    if(incoming !== current){
+      STATE.projects = JSON.parse(incoming);
+      STATE.lastSync = Date.now();
+      render();
+    }
+  });
+  fbListen(DIRECTORIO_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    if(incoming !== JSON.stringify(STATE.directorio)){
+      STATE.directorio = JSON.parse(incoming);
+      render();
+    }
+  });
+  fbListen(AREAS_KEY, (data) => {
+    if(!data || !data.value) return;
+    const incoming = data.value;
+    if(incoming !== JSON.stringify(STATE.areas)){
+      STATE.areas = JSON.parse(incoming);
+      render();
+    }
+  });
+}
+
+async function pollForUpdates(){
+  try{
+    const res = await fbGetDoc(STORAGE_KEY);
+    if(res && res.value){
+      const incoming = res.value;
+      const current = JSON.stringify(STATE.projects);
+      if(incoming !== current){
+        STATE.projects = JSON.parse(incoming);
+      }
+    }
+    STATE.lastSync = Date.now();
+    render();
+  }catch(e){
+    console.error('No se pudo forzar la sincronización:', e);
+  }
+}
+
+function timeAgo(ts){
+  if(!ts) return '—';
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s < 5) return 'ahora mismo';
+  if(s < 60) return `hace ${s} s`;
+  return `hace ${Math.round(s/60)} min`;
+}
+
+function isExcelencia(){
+  return !!(STATE.currentUser && STATE.currentUser.rol === 'excelencia');
+}
+function canFullEdit(p){
+  return isExcelencia();
+}
+function canUpdate(p){
+  if(!STATE.currentUser) return false;
+  return isExcelencia() || p.area === STATE.currentUser.area;
+}
+function canArchive(p){
+  return isExcelencia();
+}
+
+async function doLogin(nombre, password){
+  const entry = STATE.directorio.find(d => d.nombre === nombre);
+  if(!entry) return;
+  if(entry.rol === 'excelencia' && password !== EXCELENCIA_PASSWORD){
+    STATE.loginError = 'Clave incorrecta para el perfil de Excelencia Operacional.';
+    render();
+    return;
+  }
+  STATE.loginError = '';
+  STATE.currentUser = entry;
+  try{ localStorage.setItem(USER_KEY, JSON.stringify(entry)); }catch(e){}
+  render();
+}
+
+async function doLogout(){
+  STATE.currentUser = null;
+  STATE.loginSelected = '';
+  STATE.loginError = '';
+  try{ localStorage.removeItem(USER_KEY); }catch(e){}
+  render();
+}
+
+function getProject(id){ return STATE.projects.find(p => p.id === id); }
+function getNextNumero(){
+  return STATE.projects.reduce((max,p)=> Math.max(max, p.numero||0), 0) + 1;
+}
+
+function semaforo(p){
+  const brecha = (p.avanceReal||0) - (p.avancePlan||0);
+  const vencido = p.fechaTermino && p.fechaTermino < todayISO() && (p.avanceReal||0) < 100;
+  if(vencido) return 'rojo';
+  if(brecha >= -5) return 'verde';
+  if(brecha >= -15) return 'ambar';
+  return 'rojo';
+}
+function alertaColor(p){
+  return (p.alerta && p.alerta.color) || 'verde';
+}
+
+function render(){
+  const app = document.getElementById('app');
+  if(STATE.loading){ app.innerHTML = '<div class="empty">Cargando datos…</div>'; return; }
+  if(!STATE.currentUser){ app.innerHTML = renderLogin(); attachHandlers(); return; }
+  let body;
+  if(STATE.view === 'list') body = renderListView();
+  else if(STATE.view === 'seguimiento') body = renderSeguimientoView();
+  else if(STATE.view === 'equipo') body = renderTeamView();
+  else if(STATE.view === 'timeline') body = renderTimelineView();
+  else body = renderDetailView();
+  app.innerHTML = renderTopbar() + body;
+  attachHandlers();
+}
+
+function renderLogin(){
+  const selectedEntry = STATE.directorio.find(d => d.nombre === STATE.loginSelected);
+  const needsPassword = selectedEntry && selectedEntry.rol === 'excelencia';
+  return `
+  <div class="login-wrap">
+    <h1>Control de proyectos</h1>
+    <p>Identifícate para ver y actualizar los proyectos de tu área.</p>
+    <div class="field">
+      <label>Selecciona tu nombre</label>
+      <select id="login-select" data-action="login-select-change">
+        <option value="">— Elegir —</option>
+        ${STATE.directorio.map(d=>`<option value="${esc(d.nombre)}" ${d.nombre===STATE.loginSelected?'selected':''}>${esc(d.nombre)} · ${esc(d.area)}</option>`).join('')}
+      </select>
+    </div>
+    ${needsPassword ? `
+    <div class="field">
+      <label>Clave de acceso — Excelencia Operacional</label>
+      <input type="password" id="login-password" autocomplete="off">
+    </div>` : ''}
+    ${STATE.loginError ? `<div class="small-note" style="color:var(--rojo);margin-top:0;margin-bottom:10px;">${esc(STATE.loginError)}</div>` : ''}
+    <button class="btn primary" data-action="login" style="width:100%;">Ingresar</button>
+    <div class="login-note">Esta identificación organiza quién puede crear o editar proyectos de cada área. La clave del perfil de Excelencia Operacional evita que cualquiera entre a ese perfil por error, pero no es un control de seguridad de nivel corporativo — sigue viviendo en el código de esta app. Todos pueden ver el listado completo de la organización.</div>
+  </div>`;
+}
+
+function renderTopbar(){
+  const u = STATE.currentUser;
+  return `
+  <div class="topbar">
+    <div>
+      <h1>Control de proyectos</h1>
+      <div class="sub">Panel de seguimiento por área — datos compartidos con los responsables de cada proyecto</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="tabs">
+          <button class="tab-btn ${STATE.view==='list'?'active':''}" data-action="go-list">Listado general</button>
+          <button class="tab-btn ${STATE.view==='detail'?'active':''}" data-action="go-detail-any">Detalle de proyecto</button>
+          <button class="tab-btn ${STATE.view==='timeline'?'active':''}" data-action="go-timeline">Línea de Tiempo</button>
+          <button class="tab-btn ${STATE.view==='seguimiento'?'active':''}" data-action="go-seguimiento">Seguimiento de actualización</button>
+          ${isExcelencia() ? `<button class="tab-btn ${STATE.view==='equipo'?'active':''}" data-action="go-equipo">Administración</button>` : ''}
+        </div>
+        <div class="user-chip">
+          <div class="log-avatar">${initials(u.nombre)}</div>
+          <span><b>${esc(u.nombre)}</b> · ${esc(u.area)}</span>
+          <button class="btn ghost sm" data-action="logout">Salir</button>
+        </div>
+      </div>
+      <div class="sync-row">
+        <span class="sync-dot"></span> En vivo · última actualización ${timeAgo(STATE.lastSync)}
+        <button class="btn ghost sm" data-action="sync-now">Forzar sincronización</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- LIST VIEW ---------------- */
+function filteredProjects(){
+  return STATE.projects.filter(p => {
+    if(STATE.filterEstado !== 'todos' && p.estado !== STATE.filterEstado) return false;
+    if(STATE.filterArea !== 'todas' && p.area !== STATE.filterArea) return false;
+    if(STATE.filterSemaforo !== 'todos' && semaforo(p) !== STATE.filterSemaforo) return false;
+    if(STATE.filterAlerta !== 'todos' && alertaColor(p) !== STATE.filterAlerta) return false;
+    return true;
+  }).sort((a,b)=> (a.numero||0) - (b.numero||0));
+}
+
+function renderListView(){
+  const visibles = filteredProjects();
+
+  const activos = STATE.projects.filter(p=>p.estado==='activo');
+  const counts = {verde:0,ambar:0,rojo:0};
+  activos.forEach(p => counts[semaforo(p)]++);
+  const acounts = {verde:0,ambar:0,rojo:0};
+  activos.forEach(p => acounts[alertaColor(p)]++);
+
+  const rows = visibles.map(p => {
+    const brecha = (p.avanceReal||0) - (p.avancePlan||0);
+    const sem = semaforo(p);
+    const al = alertaColor(p);
+    const alComentario = (p.alerta && p.alerta.comentario) || '';
+    return `
+    <tr data-action="open-detail" data-id="${p.id}">
+      <td class="mono" style="color:var(--ink-faint);">${p.numero!=null?'#'+p.numero:'—'}</td>
+      <td>
+        <div class="proj-name">${esc(p.nombre)}</div>
+        <div class="proj-area">${esc(p.responsable)} · Etapa: ${esc(p.etapa||'—')}</div>
+      </td>
+      <td class="mono">${fmtDate(p.fechaRequerimiento)}</td>
+      <td class="mono">${fmtDate(p.fechaTermino)}</td>
+      <td>
+        <div class="progress-mini"><div style="width:${Math.min(100,p.avanceReal||0)}%"></div></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;">${p.avanceReal||0}% real / ${p.avancePlan||0}% plan</div>
+      </td>
+      <td><span class="brecha ${brecha>=0?'pos':'neg'}">${fmtBrecha(brecha)}</span></td>
+      <td><span class="semaforo"><span class="dot ${sem}"></span></span></td>
+      <td><span class="semaforo" ${alComentario?`title="${esc(alComentario)}"`:''}><span class="dot ${al}"></span></span></td>
+      <td><span class="badge ${p.estado}">${p.estado==='activo'?'Activo':'Archivado'}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="exec-summary">
+    <div class="es-block">
+      <div class="es-total">${activos.length}</div>
+      <div class="es-label">Activos</div>
+    </div>
+    <div class="es-div"></div>
+    <div class="exec-cluster">
+      <span class="es-title">Avance</span>
+      <span class="exec-chip"><span class="dot verde"></span>${counts.verde}</span>
+      <span class="exec-chip"><span class="dot ambar"></span>${counts.ambar}</span>
+      <span class="exec-chip"><span class="dot rojo"></span>${counts.rojo}</span>
+    </div>
+    <div class="es-div"></div>
+    <div class="exec-cluster">
+      <span class="es-title">Alerta</span>
+      <span class="exec-chip"><span class="dot verde"></span>${acounts.verde}</span>
+      <span class="exec-chip"><span class="dot ambar"></span>${acounts.ambar}</span>
+      <span class="exec-chip"><span class="dot rojo"></span>${acounts.rojo}</span>
+    </div>
+    <div class="es-archived">Archivados: ${STATE.projects.filter(p=>p.estado==='archivado').length}</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Listado de proyectos</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="export-btn" data-action="export-pptx">Exportar a PPT</button>
+        <button class="btn primary" data-action="open-new">+ Nuevo proyecto${!isExcelencia() ? ' de '+esc(STATE.currentUser.area) : ''}</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="filters">
+        <select data-action="filter-estado">
+          <option value="activo" ${STATE.filterEstado==='activo'?'selected':''}>Solo activos</option>
+          <option value="archivado" ${STATE.filterEstado==='archivado'?'selected':''}>Solo archivados</option>
+          <option value="todos" ${STATE.filterEstado==='todos'?'selected':''}>Todos los estados</option>
+        </select>
+        <select data-action="filter-area">
+          <option value="todas" ${STATE.filterArea==='todas'?'selected':''}>Todas las áreas</option>
+          ${STATE.areas.map(a=>`<option value="${a}" ${STATE.filterArea===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+        <select data-action="filter-semaforo">
+          <option value="todos" ${STATE.filterSemaforo==='todos'?'selected':''}>Todo avance</option>
+          <option value="verde" ${STATE.filterSemaforo==='verde'?'selected':''}>Avance verde</option>
+          <option value="ambar" ${STATE.filterSemaforo==='ambar'?'selected':''}>Avance amarillo</option>
+          <option value="rojo" ${STATE.filterSemaforo==='rojo'?'selected':''}>Avance rojo</option>
+        </select>
+        <select data-action="filter-alerta">
+          <option value="todos" ${STATE.filterAlerta==='todos'?'selected':''}>Toda alerta</option>
+          <option value="verde" ${STATE.filterAlerta==='verde'?'selected':''}>Sin alerta</option>
+          <option value="ambar" ${STATE.filterAlerta==='ambar'?'selected':''}>Alerta amarilla</option>
+          <option value="rojo" ${STATE.filterAlerta==='rojo'?'selected':''}>Alerta roja</option>
+        </select>
+      </div>
+      ${visibles.length ? `
+      <table>
+        <thead><tr>
+          <th>N°</th><th>Proyecto</th><th>Fecha requerimiento</th><th>Fecha proyectada término</th>
+          <th>% avance real / plan</th><th>Brecha</th><th>Avance</th><th>Alerta</th><th>Estado</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : `<div class="empty">No hay proyectos que coincidan con los filtros.</div>`}
+    </div>
+  </div>
+  <div class="small-note">Semáforo de avance: automático según la brecha entre real y plan. Semáforo de alerta: lo define el dueño del proyecto para marcar algo que quiere relevar en reunión, aunque el avance esté en línea con el plan — pasa el cursor sobre el punto para ver el comentario. "Exportar a PPT" genera la presentación con los proyectos que ves filtrados en este momento.</div>
+  `;
+}
+
+/* ---------------- DETAIL VIEW ---------------- */
+function renderQuickList(p, listKey, opts){
+  opts = opts || {};
+  const items = p[listKey] || [];
+  const editable = canUpdate(p);
+  const itemsHtml = items.map((it,i)=>{
+    const label = opts.nivel ? `<span class="nivel ${it.nivel}">${it.nivel}</span>${esc(it.descripcion)}` : esc(it.descripcion);
+    return `<div class="tag-item" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span>${label}</span>
+      ${editable ? `<button class="btn ghost sm" data-action="quick-del-item" data-list="${listKey}" data-id="${p.id}" data-idx="${i}" title="Quitar">✕</button>` : ''}
+    </div>`;
+  }).join('') || `<div class="empty">${opts.emptyText||'Sin registros.'}</div>`;
+
+  const addRow = editable ? `
+    <div class="repeat-row" style="margin-top:10px;">
+      <input type="text" id="qadd-${listKey}" class="quick-add-input" data-add-btn="qaddbtn-${listKey}" placeholder="${esc(opts.placeholder||'Agregar...')}" style="flex:2;">
+      ${opts.nivel ? `<select id="qadd-${listKey}-nivel"><option value="bajo">Bajo</option><option value="medio" selected>Medio</option><option value="alto">Alto</option></select>` : ''}
+      <button class="btn sm primary" id="qaddbtn-${listKey}" data-action="quick-add-item" data-list="${listKey}" data-id="${p.id}">+ Agregar</button>
+    </div>` : '';
+
+  return itemsHtml + addRow;
+}
+
+function renderDetailView(){
+  if(!STATE.selectedId || !getProject(STATE.selectedId)){
+    const activos = STATE.projects.filter(p=>p.estado==='activo');
+    if(!activos.length) return `<div class="panel"><div class="empty">No hay proyectos activos para mostrar en detalle.</div></div>`;
+    STATE.selectedId = activos[0].id;
+  }
+  const p = getProject(STATE.selectedId);
+  const sem = semaforo(p);
+  const al = alertaColor(p);
+  const alComentario = (p.alerta && p.alerta.comentario) || '';
+  const brecha = (p.avanceReal||0) - (p.avancePlan||0);
+  const otherProjects = STATE.projects.filter(x=>x.estado==='activo' || x.id===p.id);
+
+  const range = ganttRange(p);
+  const ganttEditable = canFullEdit(p);
+  const ganttRows = (p.hitos||[]).map(h => renderGanttRow(h, range, p.id, ganttEditable)).join('') || `<div class="empty">Sin hitos cargados.</div>`;
+  const ganttAxis = (p.hitos||[]).length ? renderGanttAxis(range) : '';
+
+  const highlightList = renderQuickList(p, 'highlights', {placeholder:'Nuevo highlight', emptyText:'Sin highlights registrados.'});
+  const lowlightList = renderQuickList(p, 'lowlights', {placeholder:'Nuevo lowlight', emptyText:'Sin lowlights registrados.'});
+  const riesgoList = renderQuickList(p, 'riesgos', {nivel:true, placeholder:'Nuevo riesgo', emptyText:'Sin riesgos registrados.'});
+  const apoyoList = renderQuickList(p, 'apoyos', {placeholder:'Nuevo requerimiento de apoyo', emptyText:'Sin requerimientos de apoyo registrados.'});
+
+  const pctEjec = p.presupuesto ? Math.min(100, Math.round((p.ejecutado||0)/p.presupuesto*100)) : 0;
+
+  const historial = [...(p.historial||[])].sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  const logList = historial.map(l => `
+    <div class="log-item">
+      <div class="log-avatar">${initials(l.usuario)}</div>
+      <div>
+        <div>${esc(l.cambio)}</div>
+        <div class="log-meta">${esc(l.usuario)} · ${fmtDate(l.fecha)}</div>
+      </div>
+    </div>`).join('') || `<div class="empty">Sin actualizaciones registradas.</div>`;
+
+  return `
+  <div class="panel">
+    <div class="panel-body">
+      <div class="filters" style="margin-bottom:14px;">
+        <select data-action="switch-project">
+          ${otherProjects.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${x.numero!=null?'N°'+x.numero+' — ':''}${esc(x.nombre)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="detail-header">
+        ${p.imagen
+          ? `<img src="${p.imagen}" class="project-photo-thumb" data-action="${canUpdate(p)?'photo-quick-upload':'open-lightbox'}" data-id="${p.id}" title="${canUpdate(p)?'Clic para cambiar la foto':'Ampliar foto'}">`
+          : `<div class="photo-placeholder" ${canUpdate(p)?`data-action="photo-quick-upload" data-id="${p.id}" style="cursor:pointer;"`:''}>${canUpdate(p)?'+ Agregar foto':'Sin foto'}</div>`}
+        <div style="flex:1;">
+          <h2>${p.numero!=null?'N°'+p.numero+' — ':''}${esc(p.nombre)}</h2>
+          <div class="chip-row">
+            <div class="mchip${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-etapa" data-id="${p.id}" title="Clic para cambiar la etapa"`:''}><span class="mc-label">Etapa</span><span class="mc-value">${esc(p.etapa||'—')}</span></div>
+            <div class="mchip"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
+            <div class="mchip"><span class="mc-label">Requerimiento</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
+            <div class="mchip"><span class="mc-label">Término proyectado</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
+            <div class="mchip sem ${sem}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-avance" data-id="${p.id}" title="Clic para actualizar el avance"`:''}><span class="dot ${sem}"></span><span><span class="mc-label" style="display:block;">Avance</span><span class="mc-value">${p.avanceReal||0}% / ${p.avancePlan||0}% (${fmtBrecha(brecha)})</span></span></div>
+            <div class="mchip sem ${al}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-alerta" data-id="${p.id}" title="Clic para cambiar la alerta"`:''}><span class="dot ${al}"></span><span><span class="mc-label" style="display:block;">Alerta</span><span class="mc-value">${al==='verde'?'Sin alerta':al==='ambar'?'Amarilla':'Roja'}</span></span></div>
+            <div class="mchip"><span class="mc-label">Estado</span><span class="mc-value">${p.estado==='activo'?'Activo':'Archivado'}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${canUpdate(p) ? `<button class="btn primary" data-action="open-update" data-id="${p.id}">Registrar actualización</button>` : ''}
+          ${canFullEdit(p) ? `
+          <button class="btn" data-action="open-edit" data-id="${p.id}">Editar ficha</button>
+          ${p.estado==='activo'
+            ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
+            : `<button class="btn" data-action="unarchive" data-id="${p.id}">Reactivar</button>`}
+          ` : ''}
+          ${!canUpdate(p) ? `<div class="readonly-note">Proyecto de ${esc(p.area)} — solo lectura desde tu sesión.</div>` : ''}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  ${alComentario ? `
+  <div class="panel">
+    <div class="panel-head"><h2>Alerta para reunión</h2></div>
+    <div class="panel-body">
+      <div class="tag-item" style="border-bottom:none;padding:0;"><span class="nivel ${al==='rojo'?'alto':al==='ambar'?'medio':'bajo'}">${al==='rojo'?'Roja':al==='ambar'?'Amarilla':'Verde'}</span>${esc(alComentario)}</div>
+    </div>
+  </div>` : ''}
+
+  <div class="panel">
+    <div class="panel-head"><h2>Carta Gantt</h2></div>
+    <div class="panel-body"><div class="gantt-wrap">${ganttAxis}${ganttRows}</div></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="panel">
+        <div class="panel-head"><h2>Highlights</h2></div>
+        <div class="panel-body">${highlightList}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Lowlights</h2></div>
+        <div class="panel-body">${lowlightList}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Historial de actualizaciones</h2></div>
+        <div class="panel-body">${logList}</div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-head"><h2>Presupuesto</h2>${canUpdate(p)?`<button class="btn ghost sm" data-action="quick-edit-presupuesto" data-id="${p.id}" title="Editar presupuesto">✎ Editar</button>`:''}</div>
+        <div class="panel-body">
+          <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${pctEjec}%"></div></div>
+          <div class="budget-nums"><span>Ejecutado: <b>${fmtMoney(p.ejecutado)}</b></span><span>${pctEjec}%</span></div>
+          <div class="budget-nums" style="margin-top:4px;"><span>Presupuestado</span><b>${fmtMoney(p.presupuesto)}</b></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Principales riesgos</h2></div>
+        <div class="panel-body">${riesgoList}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Requerimientos de apoyo</h2></div>
+        <div class="panel-body">${apoyoList}</div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+function initials(name){
+  if(!name) return '?';
+  return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+}
+
+function ganttRange(p){
+  const dates = [];
+  if(p.fechaInicio) dates.push(p.fechaInicio);
+  if(p.fechaTermino) dates.push(p.fechaTermino);
+  (p.hitos||[]).forEach(h=>{ if(h.inicio) dates.push(h.inicio); if(h.fin) dates.push(h.fin); });
+  if(!dates.length){ const t = todayISO(); return {start:t, end:t}; }
+  dates.sort();
+  return {start:dates[0], end:dates[dates.length-1]};
+}
+
+function renderGanttAxis(range){
+  const {ticks} = buildTimeTicks(range.start, range.end);
+  const totalDays = Math.max(1, daysBetween(range.start, range.end));
+  const tickHtml = ticks.map(t=>{
+    const off = Math.max(0, Math.min(99.5, (daysBetween(range.start, t.date)/totalDays)*100));
+    return `<div class="gantt-axis-tick" style="left:${off}%">${t.label}</div>`;
+  }).join('');
+  return `<div class="gantt-row gantt-axis-row"><div class="gantt-label"></div><div class="gantt-track gantt-axis-track">${tickHtml}</div></div>`;
+}
+
+function renderGanttRow(h, range, projectId, editable){
+  const total = Math.max(1, daysBetween(range.start, range.end));
+  const offset = Math.max(0, daysBetween(range.start, h.inicio||range.start));
+  const dur = Math.max(1, daysBetween(h.inicio||range.start, h.fin||range.end));
+  const left = Math.min(100, (offset/total)*100);
+  const width = Math.min(100-left, (dur/total)*100);
+  const todayOffset = Math.min(100, Math.max(0, (daysBetween(range.start, todayISO())/total)*100));
+  return `
+  <div class="gantt-row${editable?' gantt-row-editable':''}" ${editable?`data-hito-id="${h.id}" data-project-id="${projectId}" title="Doble clic para editar las fechas de plan"`:''}>
+    <div class="gantt-label" title="${esc(h.nombre)}">${esc(h.nombre)}</div>
+    <div class="gantt-track">
+      <div class="gantt-bar" style="left:${left}%;width:${width}%;" title="${esc(h.nombre)}: ${fmtDate(h.inicio)} → ${fmtDate(h.fin)}"></div>
+      <div class="gantt-today" style="left:${todayOffset}%;" title="Hoy"></div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- SEGUIMIENTO VIEW ---------------- */
+function renderSeguimientoView(){
+  const activos = STATE.projects.filter(p=>p.estado==='activo');
+  const porResponsable = {};
+  activos.forEach(p=>{
+    const key = p.responsable || 'Sin asignar';
+    if(!porResponsable[key]) porResponsable[key] = [];
+    const hist = [...(p.historial||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    const ultima = hist[0] ? hist[0].fecha : null;
+    porResponsable[key].push({nombre:p.nombre, ultima, dias: ultima ? daysBetween(ultima, todayISO()) : null});
+  });
+
+  const rows = Object.entries(porResponsable).map(([resp, projs])=>{
+    const maxDias = Math.max(...projs.map(x=>x.dias===null?9999:x.dias));
+    const color = maxDias > 15 ? 'rojo' : maxDias > 7 ? 'ambar' : 'verde';
+    const list = projs.map(x=> `${esc(x.nombre)} (${x.ultima ? x.dias+' d' : 'sin registro'})`).join(' · ');
+    return `
+    <div class="follow-row">
+      <div class="follow-name">${esc(resp)}</div>
+      <div class="follow-projects">${list}</div>
+      <div class="follow-days"><span class="semaforo"><span class="dot ${color}"></span> ${maxDias===9999?'sin datos':maxDias+' días'}</span></div>
+    </div>`;
+  }).join('') || `<div class="empty">No hay responsables con proyectos activos.</div>`;
+
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>Seguimiento de actualización por responsable</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Días transcurridos desde la última actualización registrada por cada responsable en sus proyectos activos. Verde: al día (≤7 días). Amarillo: revisar (8–15 días). Rojo: atrasado (más de 15 días o sin registro).</div>
+      ${rows}
+    </div>
+  </div>`;
+}
+
+/* ---------------- TIMELINE VIEW ---------------- */
+function renderTimelineView(){
+  const projects = filteredProjects().filter(p=>p.fechaInicio && p.fechaTermino);
+  if(!projects.length){
+    return `<div class="panel"><div class="empty">No hay proyectos con fechas para mostrar en la línea de tiempo.</div></div>`;
+  }
+  let minD = null, maxD = null;
+  projects.forEach(p=>{
+    if(!minD || p.fechaInicio < minD) minD = p.fechaInicio;
+    if(!maxD || p.fechaTermino > maxD) maxD = p.fechaTermino;
+  });
+  // ordena por año y luego mes (fechaInicio en formato ISO ya ordena cronológicamente así)
+  const sorted = [...projects].sort((a,b)=> a.fechaInicio.localeCompare(b.fechaInicio) || a.nombre.localeCompare(b.nombre));
+  const totalDays = Math.max(1, daysBetween(minD, maxD));
+  const {ticks} = buildTimeTicks(minD, maxD);
+
+  const axisTicks = ticks.map(t=>{
+    const off = Math.max(0, Math.min(99.5, (daysBetween(minD,t.date)/totalDays)*100));
+    return `<div class="timeline-tick" style="left:${off}%">${t.label}</div>`;
+  }).join('');
+  const todayOffset = Math.min(100, Math.max(0, (daysBetween(minD, todayISO())/totalDays)*100));
+
+  const rows = sorted.map(p=>{
+    const offset = Math.max(0, daysBetween(minD, p.fechaInicio));
+    const dur = Math.max(1, daysBetween(p.fechaInicio, p.fechaTermino));
+    const left = Math.min(100, (offset/totalDays)*100);
+    const width = Math.max(0.4, Math.min(100-left, (dur/totalDays)*100));
+    const sem = semaforo(p);
+    return `
+    <div class="timeline-row" data-action="open-detail" data-id="${p.id}">
+      <div class="timeline-label" title="${esc(p.nombre)}">${esc(p.nombre)}</div>
+      <div class="timeline-track">
+        <div class="timeline-bar ${sem}" style="left:${left}%;width:${width}%" title="${esc(p.nombre)}: ${fmtDate(p.fechaInicio)} → ${fmtDate(p.fechaTermino)}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>Línea de tiempo de proyectos</h2></div>
+    <div class="panel-body">
+      <div class="timeline-wrap">
+        <div class="timeline-axis-row">
+          <div class="timeline-label"></div>
+          <div class="timeline-track timeline-axis">${axisTicks}<div class="timeline-today" style="left:${todayOffset}%" title="Hoy"></div></div>
+        </div>
+        ${rows}
+      </div>
+    </div>
+  </div>
+  <div class="small-note">Ordenado por fecha de inicio (año y mes). Cada barra va de la fecha de inicio a la fecha proyectada de término, coloreada por el semáforo de avance. La línea vertical marca la fecha actual. Los nombres quedan fijos al desplazar horizontalmente; haz clic en un proyecto para ver su detalle.</div>
+  `;
+}
+
+
+function renderTeamView(){
+  if(!isExcelencia()) { STATE.view = 'list'; return renderListView(); }
+  const rows = STATE.directorio.map((d,i) => `
+    <div class="follow-row">
+      <div class="follow-name">${esc(d.nombre)}</div>
+      <div class="follow-projects">${esc(d.area)} · ${d.rol==='excelencia' ? 'Excelencia Operacional (acceso total, con clave)' : 'Área (crea y actualiza sus proyectos)'}</div>
+      <button class="btn sm danger" data-action="remove-person" data-idx="${i}">Quitar</button>
+    </div>`).join('');
+
+  const areaRows = STATE.areas.map((a,i) => `
+    <div class="follow-row">
+      <div class="follow-name">${esc(a)}</div>
+      <div class="follow-projects">${STATE.projects.filter(p=>p.area===a).length} proyecto(s) asociados</div>
+      <button class="btn sm danger" data-action="remove-area" data-idx="${i}">Quitar</button>
+    </div>`).join('');
+
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>Equipo con acceso</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Gestiona quién puede identificarse en la app. Excelencia Operacional edita todos los proyectos y requiere clave de acceso; el resto solo crea proyectos de su propia área y actualiza avance, riesgos, apoyos y alerta en sus proyectos.</div>
+      ${rows || '<div class="empty">Sin personas registradas.</div>'}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Agregar persona</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="field"><label>Nombre</label><input type="text" id="np-nombre"></div>
+        <div class="field"><label>Área</label>
+          <select id="np-area">${STATE.areas.map(a=>`<option>${a}</option>`).join('')}<option value="Todas">Todas</option></select>
+        </div>
+        <div class="field"><label>Rol</label>
+          <select id="np-rol">
+            <option value="area">Área (crea y actualiza sus proyectos)</option>
+            <option value="excelencia">Excelencia Operacional (acceso total, requiere clave)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px;"><button class="btn primary" data-action="add-person">+ Agregar al directorio</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Áreas de la organización</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Estas son las áreas disponibles para crear proyectos y para asignar personas del directorio.</div>
+      ${areaRows || '<div class="empty">Sin áreas registradas.</div>'}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Agregar área</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="field"><label>Nombre del área</label><input type="text" id="na-nombre" placeholder="Ej: Cadena de suministro"></div>
+      </div>
+      <div style="margin-top:14px;"><button class="btn primary" data-action="add-area">+ Agregar área</button></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Datos de la aplicación</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Actualmente hay <b>${STATE.projects.length}</b> proyecto(s) guardados. Si en algún momento ves datos de ejemplo o desactualizados en vez de los 20 proyectos reales, usa este botón para recargar los datos originales cargados desde la presentación. <b>Esto reemplaza todos los proyectos actuales</b> (incluyendo cualquier edición, foto, highlight o riesgo que hayan agregado desde entonces) — no se puede deshacer.</div>
+      <button class="btn danger" data-action="reset-seed-data">Restablecer con datos de la presentación (20 proyectos)</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- EVENT HANDLING ---------------- */
+function attachHandlers(){
+  document.querySelectorAll('[data-action]').forEach(el=>{
+    const action = el.dataset.action;
+    if(el.tagName === 'SELECT'){
+      el.onchange = (e) => handleAction(action, el, e);
+    } else {
+      el.onclick = (e) => { e.stopPropagation(); handleAction(action, el, e); };
+    }
+  });
+  document.querySelectorAll('.gantt-row-editable').forEach(row=>{
+    row.ondblclick = (e) => { e.stopPropagation(); openGanttQuickEdit(row.dataset.projectId, row.dataset.hitoId); };
+  });
+  document.querySelectorAll('.quick-add-input').forEach(inp=>{
+    inp.onkeydown = (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        const btn = document.getElementById(inp.dataset.addBtn);
+        if(btn) btn.click();
+      }
+    };
+  });
+}
+
+function handleAction(action, el){
+  switch(action){
+    case 'go-list': STATE.view='list'; render(); break;
+    case 'go-detail-any': STATE.view='detail'; render(); break;
+    case 'go-seguimiento': renderSeguimientoStandalone(); break;
+    case 'go-timeline': STATE.view='timeline'; render(); break;
+    case 'go-equipo': STATE.view='equipo'; render(); break;
+    case 'open-detail': STATE.selectedId = el.dataset.id; STATE.view='detail'; render(); break;
+    case 'switch-project': STATE.selectedId = el.value; render(); break;
+    case 'filter-estado': STATE.filterEstado = el.value; render(); break;
+    case 'filter-area': STATE.filterArea = el.value; render(); break;
+    case 'filter-semaforo': STATE.filterSemaforo = el.value; render(); break;
+    case 'filter-alerta': STATE.filterAlerta = el.value; render(); break;
+    case 'open-new': openProjectModal(null); break;
+    case 'open-edit': openProjectModal(getProject(el.dataset.id)); break;
+    case 'open-update': openUpdateModal(getProject(el.dataset.id)); break;
+    case 'archive': setEstado(el.dataset.id, 'archivado'); break;
+    case 'unarchive': setEstado(el.dataset.id, 'activo'); break;
+    case 'login': {
+      const sel = document.getElementById('login-select');
+      const pwd = document.getElementById('login-password');
+      if(sel && sel.value) doLogin(sel.value, pwd ? pwd.value : '');
+      break;
+    }
+    case 'login-select-change': STATE.loginSelected = el.value; STATE.loginError=''; render(); break;
+    case 'logout': doLogout(); break;
+    case 'sync-now': pollForUpdates(); break;
+    case 'add-person': addPerson(); break;
+    case 'remove-person': removePerson(Number(el.dataset.idx)); break;
+    case 'add-area': addArea(); break;
+    case 'reset-seed-data': resetToSeedData(); break;
+    case 'quick-edit-etapa': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      openQuickEdit(p.id, 'Cambiar etapa', [
+        {key:'etapa', label:'Etapa actual', type:'select', value:p.etapa||'Estudio', options: ETAPAS.map(e=>({value:e,label:e}))}
+      ], async (vals, proj) => {
+        proj.etapa = vals.etapa;
+        logCambio(proj, `Cambió la etapa a ${vals.etapa}`);
+        await saveData();
+      });
+      break;
+    }
+    case 'quick-edit-avance': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      openQuickEdit(p.id, 'Actualizar avance', [
+        {key:'avanceReal', label:'% avance real (de la etapa)', type:'number', value:p.avanceReal||0, min:0, max:100},
+        {key:'avancePlan', label:'% avance plan (de la etapa)', type:'number', value:p.avancePlan||0, min:0, max:100}
+      ], async (vals, proj) => {
+        proj.avanceReal = Math.max(0, Math.min(100, Number(vals.avanceReal)||0));
+        proj.avancePlan = Math.max(0, Math.min(100, Number(vals.avancePlan)||0));
+        logCambio(proj, `Actualizó avance a ${proj.avanceReal}% real / ${proj.avancePlan}% plan`);
+        await saveData();
+      });
+      break;
+    }
+    case 'quick-edit-alerta': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      const alerta = p.alerta || {color:'verde', comentario:''};
+      openQuickEdit(p.id, 'Cambiar alerta', [
+        {key:'color', label:'Color de alerta', type:'select', value:alerta.color, options:[
+          {value:'verde', label:'Verde — sin nada que relevar'},
+          {value:'ambar', label:'Amarillo — a monitorear'},
+          {value:'rojo', label:'Rojo — relevar en reunión'}
+        ]},
+        {key:'comentario', label:'Comentario (visible en el listado)', type:'textarea', value:alerta.comentario||''}
+      ], async (vals, proj) => {
+        proj.alerta = {color:vals.color, comentario:(vals.comentario||'').trim()};
+        logCambio(proj, `Cambió la alerta a ${vals.color}`);
+        await saveData();
+      });
+      break;
+    }
+    case 'quick-edit-presupuesto': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      const fields = [{key:'ejecutado', label:'Ejecutado ($)', type:'number', value:p.ejecutado||0, min:0}];
+      if(canFullEdit(p)) fields.unshift({key:'presupuesto', label:'Presupuestado ($)', type:'number', value:p.presupuesto||0, min:0});
+      openQuickEdit(p.id, 'Actualizar presupuesto', fields, async (vals, proj) => {
+        if(vals.presupuesto != null) proj.presupuesto = Math.max(0, Number(vals.presupuesto)||0);
+        proj.ejecutado = Math.max(0, Number(vals.ejecutado)||0);
+        logCambio(proj, `Actualizó presupuesto ejecutado a ${fmtMoney(proj.ejecutado)}`);
+        await saveData();
+      });
+      break;
+    }
+    case 'quick-add-item': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      const listKey = el.dataset.list;
+      const input = document.getElementById('qadd-'+listKey);
+      if(!input) break;
+      const texto = input.value.trim();
+      if(!texto) break;
+      p[listKey] = p[listKey] || [];
+      if(listKey === 'riesgos'){
+        const nivelSel = document.getElementById('qadd-riesgos-nivel');
+        p[listKey].push({id:uid('r'), descripcion:texto, nivel: nivelSel ? nivelSel.value : 'medio'});
+      } else {
+        p[listKey].push({id:uid('x'), descripcion:texto});
+      }
+      logCambio(p, `Agregó un ítem a ${listKey}: "${texto}"`);
+      saveData().then(render);
+      break;
+    }
+    case 'quick-del-item': {
+      const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
+      const listKey = el.dataset.list;
+      const idx = Number(el.dataset.idx);
+      if(!p[listKey] || !p[listKey][idx]) break;
+      p[listKey].splice(idx,1);
+      saveData().then(render);
+      break;
+    }
+    case 'remove-area': removeArea(Number(el.dataset.idx)); break;
+    case 'export-pptx': openExportModal(); break;
+    case 'open-lightbox': { const p = getProject(el.dataset.id); if(p && p.imagen) showLightbox(p.imagen, p.nombre); break; }
+    case 'photo-quick-upload': quickUploadPhoto(el.dataset.id); break;
+  }
+}
+
+function quickUploadPhoto(projectId){
+  const p = getProject(projectId);
+  if(!p || !canUpdate(p)) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await compressImage(file);
+      p.imagen = dataUrl;
+      p.historial = p.historial || [];
+      p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Actualizó la foto del proyecto'});
+      await saveData();
+      render();
+    }catch(err){
+      console.error(err);
+      alert('No se pudo procesar la imagen. Prueba con otro archivo.');
+    }
+  };
+  input.click();
+}
+
+async function addArea(){
+  if(!isExcelencia()) return;
+  const input = document.getElementById('na-nombre');
+  const nombre = input.value.trim();
+  if(!nombre) return;
+  if(STATE.areas.some(a=>a.toLowerCase()===nombre.toLowerCase())) return;
+  STATE.areas.push(nombre);
+  await saveAreas();
+  render();
+}
+
+async function removeArea(idx){
+  if(!isExcelencia()) return;
+  const area = STATE.areas[idx];
+  if(!area) return;
+  const enUso = STATE.projects.some(p=>p.area===area) || STATE.directorio.some(d=>d.area===area);
+  if(enUso){
+    alert('No se puede quitar "'+area+'": todavía hay proyectos o personas asignadas a esta área. Reasígnalos primero.');
+    return;
+  }
+  STATE.areas.splice(idx,1);
+  await saveAreas();
+  render();
+}
+
+async function resetToSeedData(){
+  if(!isExcelencia()) return;
+  const primeraConf = confirm('Esto reemplazará TODOS los proyectos actuales por los 20 datos originales de la presentación. Se perderá cualquier edición, foto, highlight, lowlight o riesgo agregado desde entonces. ¿Continuar?');
+  if(!primeraConf) return;
+  const segundaConf = confirm('Confirmación final: esta acción no se puede deshacer. ¿Restablecer de todas formas?');
+  if(!segundaConf) return;
+  STATE.projects = seedData();
+  await saveData();
+  STATE.view = 'list';
+  render();
+}
+
+async function addPerson(){
+  if(!isExcelencia()) return;
+  const nombre = document.getElementById('np-nombre').value.trim();
+  const area = document.getElementById('np-area').value;
+  const rol = document.getElementById('np-rol').value;
+  if(!nombre) return;
+  if(STATE.directorio.some(d=>d.nombre.toLowerCase()===nombre.toLowerCase())) return;
+  STATE.directorio.push({nombre, area, rol});
+  await saveDirectorio();
+  render();
+}
+
+async function removePerson(idx){
+  if(!isExcelencia()) return;
+  const entry = STATE.directorio[idx];
+  if(!entry) return;
+  if(STATE.currentUser && STATE.currentUser.nombre === entry.nombre) return;
+  STATE.directorio.splice(idx,1);
+  await saveDirectorio();
+  render();
+}
+
+function renderSeguimientoStandalone(){
+  STATE.view = 'seguimiento';
+  const app = document.getElementById('app');
+  app.innerHTML = renderTopbar() + renderSeguimientoView();
+  attachHandlers();
+}
+
+async function setEstado(id, estado){
+  const p = getProject(id);
+  if(!p || !canFullEdit(p)) return;
+  p.estado = estado;
+  p.historial = p.historial || [];
+  p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio: estado==='archivado' ? 'Proyecto dado de baja del seguimiento activo' : 'Proyecto reactivado en el seguimiento'});
+  await saveData();
+  render();
+}
+
+/* ---------------- MODALS ---------------- */
+function openModalShell(title, bodyHtml, onMount){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-head"><h3>${title}</h3><button class="btn ghost sm" data-close>Cerrar</button></div>
+      <div class="modal-body">${bodyHtml}</div>
+    </div>`;
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-close]').onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+  if(onMount) onMount(overlay);
+  return overlay;
+}
+
+function openProjectModal(project){
+  const isNew = !project;
+  if(!isNew && !canFullEdit(project)) return;
+  const u = STATE.currentUser;
+  const lockArea = isNew && !isExcelencia();
+  const p = project || {
+    id: uid('proj'), numero: getNextNumero(), nombre:'', area: lockArea ? u.area : STATE.areas[0], responsable: !isExcelencia() ? u.nombre : '', etapa:'Estudio',
+    fechaRequerimiento:todayISO(), fechaInicio:todayISO(), fechaTermino:todayISO(),
+    avanceReal:0, avancePlan:0, estado:'activo', presupuesto:0, ejecutado:0,
+    hitos:[], riesgos:[], apoyos:[], highlights:[], lowlights:[], historial:[], alerta:{color:'verde', comentario:''}, imagen:null
+  };
+
+  const body = `
+    <div class="form-grid">
+      <div class="field"><label>Nombre del proyecto</label><input type="text" id="f-nombre" value="${esc(p.nombre)}"></div>
+      <div class="field"><label>Área</label><select id="f-area" ${lockArea?'disabled':''}>${STATE.areas.map(a=>`<option ${a===p.area?'selected':''}>${a}</option>`).join('')}</select>${lockArea?`<input type="hidden" id="f-area-locked" value="${esc(p.area)}">`:''}</div>
+      <div class="field"><label>Responsable</label><input type="text" id="f-responsable" value="${esc(p.responsable)}"></div>
+      <div class="field"><label>Estado</label>
+        <select id="f-estado"><option value="activo" ${p.estado==='activo'?'selected':''}>Activo</option><option value="archivado" ${p.estado==='archivado'?'selected':''}>Archivado</option></select>
+      </div>
+      <div class="field"><label>Fecha de requerimiento</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
+      <div class="field"><label>Fecha de inicio</label><input type="date" id="f-finicio" value="${p.fechaInicio||''}"></div>
+      <div class="field"><label>Fecha proyectada de término</label><input type="date" id="f-ftermino" value="${p.fechaTermino||''}"></div>
+      <div class="field"></div>
+      <div class="field"><label>% avance plan (de la etapa)</label><input type="number" id="f-avanceplan" min="0" max="100" value="${p.avancePlan||0}"></div>
+      <div class="field"><label>% avance real (de la etapa)</label><input type="number" id="f-avancereal" min="0" max="100" value="${p.avanceReal||0}"></div>
+      <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
+      <div class="field"><label>Ejecutado ($)</label><input type="number" id="f-ejecutado" min="0" value="${p.ejecutado||0}"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Semáforo de alerta</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Color de alerta</label>
+          <select id="f-alerta-color">
+            <option value="verde" ${(p.alerta&&p.alerta.color)==='verde'||!p.alerta?'selected':''}>Verde — sin nada que relevar</option>
+            <option value="ambar" ${(p.alerta&&p.alerta.color)==='ambar'?'selected':''}>Amarillo — a monitorear</option>
+            <option value="rojo" ${(p.alerta&&p.alerta.color)==='rojo'?'selected':''}>Rojo — relevar en reunión</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Comentario de alerta (visible en el listado general)</label>
+        <textarea id="f-alerta-comentario" rows="2" placeholder="Ej: aunque el avance va en línea con el plan, necesitamos apoyo de TI para el siguiente hito">${esc(p.alerta&&p.alerta.comentario||'')}</textarea>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Foto del proyecto</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <img id="photo-preview" src="${p.imagen||''}" style="${p.imagen?'':'display:none;'}" class="photo-upload-preview">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="file" id="photo-file" accept="image/*" style="display:none;">
+          <button class="btn sm" type="button" id="photo-btn">Subir / cambiar foto</button>
+          <button class="btn sm danger" type="button" id="photo-remove-btn" style="${p.imagen?'':'display:none;'}">Quitar foto</button>
+        </div>
+      </div>
+    </div>
+    <div class="subsection">
+      <div class="subsection-title">Hitos principales</div>
+      <div id="hitos-wrap"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn sm" type="button" id="add-hito">+ Agregar hito</button>
+        <button class="btn sm" type="button" id="import-hitos-btn">Importar desde Excel / CSV</button>
+        <input type="file" id="import-hitos-file" accept=".xlsx,.xls,.csv" style="display:none;">
+      </div>
+      <div class="small-note" style="margin-top:8px;margin-bottom:0;">El archivo debe tener columnas: <b>Actividad</b>, <b>Inicio</b> y <b>Fin</b> (las fechas de plan). Estas líneas son solo de referencia temporal; el % de avance se controla a nivel del proyecto según su etapa actual, más abajo. Si tu carta Gantt está hecha en think-cell, usa "Editar datos" en PowerPoint para exportar esa misma tabla a Excel.</div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Etapa y avance del proyecto</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Etapa actual</label>
+          <select id="f-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="small-note" style="margin-top:8px;margin-bottom:0;">El % de avance real y plan que definiste arriba corresponde a esta etapa. Cuando el proyecto pase a la siguiente etapa, actualiza este campo y reinicia el % de avance.</div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Riesgos</div>
+      <div id="riesgos-wrap"></div>
+      <button class="btn sm" type="button" id="add-riesgo">+ Agregar riesgo</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Requerimientos de apoyo</div>
+      <div id="apoyos-wrap"></div>
+      <button class="btn sm" type="button" id="add-apoyo">+ Agregar requerimiento</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Highlights</div>
+      <div id="highlights-wrap"></div>
+      <button class="btn sm" type="button" id="add-highlight">+ Agregar highlight</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Lowlights</div>
+      <div id="lowlights-wrap"></div>
+      <button class="btn sm" type="button" id="add-lowlight">+ Agregar lowlight</button>
+    </div>
+
+    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
+      <button class="btn" type="button" id="cancel-btn">Cancelar</button>
+      <button class="btn primary" type="button" id="save-btn">${isNew?'Crear proyecto':'Guardar cambios'}</button>
+    </div>
+  `;
+
+  const overlay = openModalShell(isNew ? 'Nuevo proyecto' : 'Editar proyecto', body, (ov)=>{
+    let hitos = JSON.parse(JSON.stringify(p.hitos||[]));
+    let riesgos = JSON.parse(JSON.stringify(p.riesgos||[]));
+    let apoyos = JSON.parse(JSON.stringify(p.apoyos||[]));
+    let highlights = JSON.parse(JSON.stringify(p.highlights||[]));
+    let lowlights = JSON.parse(JSON.stringify(p.lowlights||[]));
+    let imagenData = p.imagen || null;
+
+    ov.querySelector('#photo-btn').onclick = () => ov.querySelector('#photo-file').click();
+    ov.querySelector('#photo-file').onchange = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        imagenData = await compressImage(file);
+        const img = ov.querySelector('#photo-preview');
+        img.src = imagenData; img.style.display = '';
+        ov.querySelector('#photo-remove-btn').style.display = '';
+      }catch(err){
+        console.error(err);
+        alert('No se pudo procesar la imagen. Prueba con otro archivo.');
+      }
+      e.target.value = '';
+    };
+    ov.querySelector('#photo-remove-btn').onclick = () => {
+      imagenData = null;
+      const img = ov.querySelector('#photo-preview');
+      img.src = ''; img.style.display = 'none';
+      ov.querySelector('#photo-remove-btn').style.display = 'none';
+    };
+
+    function renderHitos(){
+      ov.querySelector('#hitos-wrap').innerHTML = hitos.map((h,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Nombre de la actividad" value="${esc(h.nombre)}" data-hi="${i}" data-hf="nombre" style="flex:2;">
+          <input type="date" value="${h.inicio||''}" data-hi="${i}" data-hf="inicio">
+          <input type="date" value="${h.fin||''}" data-hi="${i}" data-hf="fin">
+          <button class="btn sm danger" type="button" data-del-hito="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-hi]').forEach(inp=>{
+        inp.oninput = () => { hitos[+inp.dataset.hi][inp.dataset.hf] = inp.value; };
+      });
+      ov.querySelectorAll('[data-del-hito]').forEach(btn=>{
+        btn.onclick = () => { hitos.splice(+btn.dataset.delHito,1); renderHitos(); };
+      });
+    }
+    function renderRiesgos(){
+      ov.querySelector('#riesgos-wrap').innerHTML = riesgos.map((r,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Descripción del riesgo" value="${esc(r.descripcion)}" data-ri="${i}" data-rf="descripcion">
+          <select data-ri="${i}" data-rf="nivel">
+            <option value="bajo" ${r.nivel==='bajo'?'selected':''}>Bajo</option>
+            <option value="medio" ${r.nivel==='medio'?'selected':''}>Medio</option>
+            <option value="alto" ${r.nivel==='alto'?'selected':''}>Alto</option>
+          </select>
+          <button class="btn sm danger" type="button" data-del-riesgo="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-ri]').forEach(inp=>{
+        inp.oninput = () => { riesgos[+inp.dataset.ri][inp.dataset.rf] = inp.value; };
+      });
+      ov.querySelectorAll('[data-del-riesgo]').forEach(btn=>{
+        btn.onclick = () => { riesgos.splice(+btn.dataset.delRiesgo,1); renderRiesgos(); };
+      });
+    }
+    function renderApoyos(){
+      ov.querySelector('#apoyos-wrap').innerHTML = apoyos.map((a,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Requerimiento de apoyo" value="${esc(a.descripcion)}" data-ai="${i}">
+          <button class="btn sm danger" type="button" data-del-apoyo="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-ai]').forEach(inp=>{
+        inp.oninput = () => { apoyos[+inp.dataset.ai].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-del-apoyo]').forEach(btn=>{
+        btn.onclick = () => { apoyos.splice(+btn.dataset.delApoyo,1); renderApoyos(); };
+      });
+    }
+    function renderHighlights(){
+      ov.querySelector('#highlights-wrap').innerHTML = highlights.map((x,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Highlight" value="${esc(x.descripcion)}" data-hli="${i}">
+          <button class="btn sm danger" type="button" data-del-hl="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-hli]').forEach(inp=>{
+        inp.oninput = () => { highlights[+inp.dataset.hli].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-del-hl]').forEach(btn=>{
+        btn.onclick = () => { highlights.splice(+btn.dataset.delHl,1); renderHighlights(); };
+      });
+    }
+    function renderLowlights(){
+      ov.querySelector('#lowlights-wrap').innerHTML = lowlights.map((x,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Lowlight" value="${esc(x.descripcion)}" data-lli="${i}">
+          <button class="btn sm danger" type="button" data-del-ll="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-lli]').forEach(inp=>{
+        inp.oninput = () => { lowlights[+inp.dataset.lli].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-del-ll]').forEach(btn=>{
+        btn.onclick = () => { lowlights.splice(+btn.dataset.delLl,1); renderLowlights(); };
+      });
+    }
+    renderHitos(); renderRiesgos(); renderApoyos(); renderHighlights(); renderLowlights();
+    ov.querySelector('#add-highlight').onclick = () => { highlights.push({id:uid('hi'),descripcion:''}); renderHighlights(); };
+    ov.querySelector('#add-lowlight').onclick = () => { lowlights.push({id:uid('lo'),descripcion:''}); renderLowlights(); };
+
+    ov.querySelector('#add-hito').onclick = () => { hitos.push({id:uid('h'),nombre:'',inicio:todayISO(),fin:todayISO()}); renderHitos(); };
+    ov.querySelector('#import-hitos-btn').onclick = () => { ov.querySelector('#import-hitos-file').click(); };
+    ov.querySelector('#import-hitos-file').onchange = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        const imported = await importHitosFromFile(file);
+        if(!imported.length){ alert('No se encontraron filas válidas en el archivo. Revisa que tenga columnas Actividad, Inicio y Fin.'); return; }
+        hitos = hitos.concat(imported);
+        renderHitos();
+      }catch(err){
+        console.error(err);
+        alert('No se pudo leer el archivo. Verifica que sea un Excel (.xlsx) o CSV válido.');
+      }
+      e.target.value = '';
+    };
+    ov.querySelector('#add-riesgo').onclick = () => { riesgos.push({id:uid('r'),descripcion:'',nivel:'medio'}); renderRiesgos(); };
+    ov.querySelector('#add-apoyo').onclick = () => { apoyos.push({id:uid('a'),descripcion:''}); renderApoyos(); };
+
+    ov.querySelector('#cancel-btn').onclick = () => ov.remove();
+    ov.querySelector('#save-btn').onclick = async () => {
+      const nombre = ov.querySelector('#f-nombre').value.trim();
+      if(!nombre){ ov.querySelector('#f-nombre').focus(); return; }
+      p.nombre = nombre;
+      p.area = lockArea ? ov.querySelector('#f-area-locked').value : ov.querySelector('#f-area').value;
+      p.responsable = ov.querySelector('#f-responsable').value.trim();
+      p.estado = ov.querySelector('#f-estado').value;
+      p.fechaRequerimiento = ov.querySelector('#f-freq').value;
+      p.fechaInicio = ov.querySelector('#f-finicio').value;
+      p.fechaTermino = ov.querySelector('#f-ftermino').value;
+      p.avancePlan = Number(ov.querySelector('#f-avanceplan').value)||0;
+      p.avanceReal = Number(ov.querySelector('#f-avancereal').value)||0;
+      p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
+      p.ejecutado = Number(ov.querySelector('#f-ejecutado').value)||0;
+      p.etapa = ov.querySelector('#f-etapa').value;
+      p.alerta = { color: ov.querySelector('#f-alerta-color').value, comentario: ov.querySelector('#f-alerta-comentario').value.trim() };
+      p.imagen = imagenData;
+      p.hitos = hitos.filter(h=>h.nombre.trim());
+      p.riesgos = riesgos.filter(r=>r.descripcion.trim());
+      p.apoyos = apoyos.filter(a=>a.descripcion.trim());
+      p.highlights = highlights.filter(x=>x.descripcion.trim());
+      p.lowlights = lowlights.filter(x=>x.descripcion.trim());
+      p.historial = p.historial || [];
+
+      if(isNew){
+        p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Proyecto creado y agregado al listado de seguimiento'});
+        STATE.projects.push(p);
+      } else {
+        p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:'Editó la ficha del proyecto'});
+      }
+      await saveData();
+      ov.remove();
+      STATE.selectedId = p.id;
+      STATE.view = 'detail';
+      render();
+    };
+  });
+}
+
+function openQuickEdit(projectId, title, fields, onSave){
+  const p = getProject(projectId);
+  if(!p) return;
+  const fieldsHtml = fields.map(f=>{
+    if(f.type==='select'){
+      return `<div class="field" style="margin-bottom:12px;"><label>${esc(f.label)}</label><select id="qe-${f.key}">${f.options.map(o=>`<option value="${esc(o.value)}" ${o.value===f.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select></div>`;
+    }
+    if(f.type==='textarea'){
+      return `<div class="field" style="margin-bottom:12px;"><label>${esc(f.label)}</label><textarea id="qe-${f.key}" rows="2">${esc(f.value||'')}</textarea></div>`;
+    }
+    return `<div class="field" style="margin-bottom:12px;"><label>${esc(f.label)}</label><input type="${f.type||'text'}" id="qe-${f.key}" value="${f.value!=null?esc(String(f.value)):''}" ${f.min!=null?`min="${f.min}"`:''} ${f.max!=null?`max="${f.max}"`:''}></div>`;
+  }).join('');
+  const body = fieldsHtml + `
+    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
+      <button class="btn" type="button" id="qe-cancel">Cancelar</button>
+      <button class="btn primary" type="button" id="qe-save">Guardar</button>
+    </div>`;
+  const ov = openModalShell(title, body, (ov)=>{
+    ov.querySelector('#qe-cancel').onclick = () => ov.remove();
+    ov.querySelector('#qe-save').onclick = async () => {
+      const values = {};
+      fields.forEach(f=>{ values[f.key] = ov.querySelector('#qe-'+f.key).value; });
+      await onSave(values, p);
+      ov.remove();
+      render();
+    };
+  });
+}
+
+function logCambio(p, texto){
+  p.historial = p.historial || [];
+  p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:texto});
+}
+
+function openGanttQuickEdit(projectId, hitoId){
+  const p = getProject(projectId);
+  if(!p || !canFullEdit(p)) return;
+  const h = (p.hitos||[]).find(x=>x.id===hitoId);
+  if(!h) return;
+  const body = `
+    <div class="field" style="margin-bottom:12px;"><label>Actividad</label><input type="text" id="qg-nombre" value="${esc(h.nombre)}"></div>
+    <div class="form-grid">
+      <div class="field"><label>Inicio (plan)</label><input type="date" id="qg-inicio" value="${h.inicio||''}"></div>
+      <div class="field"><label>Fin (plan)</label><input type="date" id="qg-fin" value="${h.fin||''}"></div>
+    </div>
+    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
+      <button class="btn" type="button" id="qg-cancel">Cancelar</button>
+      <button class="btn primary" type="button" id="qg-save">Guardar</button>
+    </div>
+  `;
+  const ov = openModalShell('Editar fechas de plan', body, (ov)=>{
+    ov.querySelector('#qg-cancel').onclick = () => ov.remove();
+    ov.querySelector('#qg-save').onclick = async () => {
+      const nombre = ov.querySelector('#qg-nombre').value.trim();
+      const inicio = ov.querySelector('#qg-inicio').value;
+      const fin = ov.querySelector('#qg-fin').value;
+      if(!nombre || !inicio || !fin) return;
+      h.nombre = nombre; h.inicio = inicio; h.fin = fin;
+      p.historial = p.historial || [];
+      p.historial.push({id:uid('l'), fecha:todayISO(), usuario:STATE.currentUser.nombre, cambio:`Ajustó fechas de plan de "${nombre}" a ${fmtDate(inicio)} → ${fmtDate(fin)}`});
+      await saveData();
+      ov.remove();
+      render();
+    };
+  });
+}
+
+function openUpdateModal(project){
+  if(!canUpdate(project)) return;
+  const p = project;
+  const alerta = p.alerta || {color:'verde', comentario:''};
+  const body = `
+    <div class="form-grid">
+      <div class="field"><label>Actualizado por</label><input type="text" id="u-usuario" value="${esc(STATE.currentUser.nombre)}"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="u-fecha" value="${todayISO()}"></div>
+      <div class="field"><label>Etapa actual</label><select id="u-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select></div>
+      <div class="field"><label>% avance real (de la etapa)</label><input type="number" id="u-avance" min="0" max="100" value="${p.avanceReal||0}"></div>
+      <div class="field"><label>Ejecutado presupuestario ($)</label><input type="number" id="u-ejecutado" min="0" value="${p.ejecutado||0}"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Semáforo de alerta</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Color de alerta</label>
+          <select id="u-alerta-color">
+            <option value="verde" ${alerta.color==='verde'?'selected':''}>Verde — sin nada que relevar</option>
+            <option value="ambar" ${alerta.color==='ambar'?'selected':''}>Amarillo — a monitorear</option>
+            <option value="rojo" ${alerta.color==='rojo'?'selected':''}>Rojo — relevar en reunión</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Comentario de alerta (visible en el listado general)</label>
+        <textarea id="u-alerta-comentario" rows="2" placeholder="Ej: aunque el avance va en línea con el plan, necesitamos apoyo de TI para el siguiente hito">${esc(alerta.comentario||'')}</textarea>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Foto del proyecto</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <img id="u-photo-preview" src="${p.imagen||''}" style="${p.imagen?'':'display:none;'}" class="photo-upload-preview">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="file" id="u-photo-file" accept="image/*" style="display:none;">
+          <button class="btn sm" type="button" id="u-photo-btn">Subir / cambiar foto</button>
+          <button class="btn sm danger" type="button" id="u-photo-remove-btn" style="${p.imagen?'':'display:none;'}">Quitar foto</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Riesgos</div>
+      <div id="u-riesgos-wrap"></div>
+      <button class="btn sm" type="button" id="u-add-riesgo">+ Agregar riesgo</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Requerimientos de apoyo</div>
+      <div id="u-apoyos-wrap"></div>
+      <button class="btn sm" type="button" id="u-add-apoyo">+ Agregar requerimiento</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Highlights</div>
+      <div id="u-highlights-wrap"></div>
+      <button class="btn sm" type="button" id="u-add-highlight">+ Agregar highlight</button>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Lowlights</div>
+      <div id="u-lowlights-wrap"></div>
+      <button class="btn sm" type="button" id="u-add-lowlight">+ Agregar lowlight</button>
+    </div>
+
+    <div class="field" style="margin-top:16px;">
+      <label>Comentario general de la actualización</label>
+      <textarea id="u-comentario" rows="3" placeholder="Ej: Se completó el hito de diseño, continúa en curso la etapa de migración"></textarea>
+    </div>
+    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
+      <button class="btn" type="button" id="u-cancel">Cancelar</button>
+      <button class="btn primary" type="button" id="u-save">Guardar actualización</button>
+    </div>
+  `;
+  const ov = openModalShell('Registrar actualización — ' + esc(p.nombre), body, (ov)=>{
+    let riesgos = JSON.parse(JSON.stringify(p.riesgos||[]));
+    let apoyos = JSON.parse(JSON.stringify(p.apoyos||[]));
+    let highlights = JSON.parse(JSON.stringify(p.highlights||[]));
+    let lowlights = JSON.parse(JSON.stringify(p.lowlights||[]));
+    let imagenData = p.imagen || null;
+
+    ov.querySelector('#u-photo-btn').onclick = () => ov.querySelector('#u-photo-file').click();
+    ov.querySelector('#u-photo-file').onchange = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        imagenData = await compressImage(file);
+        const img = ov.querySelector('#u-photo-preview');
+        img.src = imagenData; img.style.display = '';
+        ov.querySelector('#u-photo-remove-btn').style.display = '';
+      }catch(err){
+        console.error(err);
+        alert('No se pudo procesar la imagen. Prueba con otro archivo.');
+      }
+      e.target.value = '';
+    };
+    ov.querySelector('#u-photo-remove-btn').onclick = () => {
+      imagenData = null;
+      const img = ov.querySelector('#u-photo-preview');
+      img.src = ''; img.style.display = 'none';
+      ov.querySelector('#u-photo-remove-btn').style.display = 'none';
+    };
+
+    function renderURiesgos(){
+      ov.querySelector('#u-riesgos-wrap').innerHTML = riesgos.map((r,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Descripción del riesgo" value="${esc(r.descripcion)}" data-uri="${i}" data-urf="descripcion">
+          <select data-uri="${i}" data-urf="nivel">
+            <option value="bajo" ${r.nivel==='bajo'?'selected':''}>Bajo</option>
+            <option value="medio" ${r.nivel==='medio'?'selected':''}>Medio</option>
+            <option value="alto" ${r.nivel==='alto'?'selected':''}>Alto</option>
+          </select>
+          <button class="btn sm danger" type="button" data-udel-riesgo="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-uri]').forEach(inp=>{
+        inp.oninput = () => { riesgos[+inp.dataset.uri][inp.dataset.urf] = inp.value; };
+      });
+      ov.querySelectorAll('[data-udel-riesgo]').forEach(btn=>{
+        btn.onclick = () => { riesgos.splice(+btn.dataset.udelRiesgo,1); renderURiesgos(); };
+      });
+    }
+    function renderUApoyos(){
+      ov.querySelector('#u-apoyos-wrap').innerHTML = apoyos.map((a,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Requerimiento de apoyo" value="${esc(a.descripcion)}" data-uai="${i}">
+          <button class="btn sm danger" type="button" data-udel-apoyo="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-uai]').forEach(inp=>{
+        inp.oninput = () => { apoyos[+inp.dataset.uai].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-udel-apoyo]').forEach(btn=>{
+        btn.onclick = () => { apoyos.splice(+btn.dataset.udelApoyo,1); renderUApoyos(); };
+      });
+    }
+    function renderUHighlights(){
+      ov.querySelector('#u-highlights-wrap').innerHTML = highlights.map((x,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Highlight" value="${esc(x.descripcion)}" data-uhli="${i}">
+          <button class="btn sm danger" type="button" data-udel-hl="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-uhli]').forEach(inp=>{
+        inp.oninput = () => { highlights[+inp.dataset.uhli].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-udel-hl]').forEach(btn=>{
+        btn.onclick = () => { highlights.splice(+btn.dataset.udelHl,1); renderUHighlights(); };
+      });
+    }
+    function renderULowlights(){
+      ov.querySelector('#u-lowlights-wrap').innerHTML = lowlights.map((x,i)=>`
+        <div class="repeat-row">
+          <input type="text" placeholder="Lowlight" value="${esc(x.descripcion)}" data-ulli="${i}">
+          <button class="btn sm danger" type="button" data-udel-ll="${i}">✕</button>
+        </div>`).join('');
+      ov.querySelectorAll('[data-ulli]').forEach(inp=>{
+        inp.oninput = () => { lowlights[+inp.dataset.ulli].descripcion = inp.value; };
+      });
+      ov.querySelectorAll('[data-udel-ll]').forEach(btn=>{
+        btn.onclick = () => { lowlights.splice(+btn.dataset.udelLl,1); renderULowlights(); };
+      });
+    }
+    renderURiesgos(); renderUApoyos(); renderUHighlights(); renderULowlights();
+
+    ov.querySelector('#u-add-riesgo').onclick = () => { riesgos.push({id:uid('r'),descripcion:'',nivel:'medio'}); renderURiesgos(); };
+    ov.querySelector('#u-add-apoyo').onclick = () => { apoyos.push({id:uid('a'),descripcion:''}); renderUApoyos(); };
+    ov.querySelector('#u-add-highlight').onclick = () => { highlights.push({id:uid('hi'),descripcion:''}); renderUHighlights(); };
+    ov.querySelector('#u-add-lowlight').onclick = () => { lowlights.push({id:uid('lo'),descripcion:''}); renderULowlights(); };
+
+    ov.querySelector('#u-cancel').onclick = () => ov.remove();
+    ov.querySelector('#u-save').onclick = async () => {
+      const usuario = ov.querySelector('#u-usuario').value.trim() || STATE.currentUser.nombre;
+      const fecha = ov.querySelector('#u-fecha').value || todayISO();
+      const nuevaEtapa = ov.querySelector('#u-etapa').value;
+      const nuevoAvance = Number(ov.querySelector('#u-avance').value)||0;
+      const nuevoEjecutado = Number(ov.querySelector('#u-ejecutado').value)||0;
+      const nuevoAlertaColor = ov.querySelector('#u-alerta-color').value;
+      const nuevoAlertaComentario = ov.querySelector('#u-alerta-comentario').value.trim();
+      const comentario = ov.querySelector('#u-comentario').value.trim();
+
+      p.etapa = nuevaEtapa;
+      p.avanceReal = nuevoAvance;
+      p.ejecutado = nuevoEjecutado;
+      p.alerta = {color:nuevoAlertaColor, comentario:nuevoAlertaComentario};
+      p.imagen = imagenData;
+      p.riesgos = riesgos.filter(r=>r.descripcion.trim());
+      p.apoyos = apoyos.filter(a=>a.descripcion.trim());
+      p.highlights = highlights.filter(x=>x.descripcion.trim());
+      p.lowlights = lowlights.filter(x=>x.descripcion.trim());
+      p.historial = p.historial || [];
+      p.historial.push({
+        id: uid('l'), fecha, usuario,
+        cambio: (comentario ? comentario + ' — ' : '') + `Etapa: ${nuevaEtapa}. Avance actualizado a ${nuevoAvance}%, alerta en ${nuevoAlertaColor}`
+      });
+      await saveData();
+      ov.remove();
+      render();
+    };
+  });
+}
+
+/* ---------------- PROJECT PHOTO (upload, compress, lightbox) ---------------- */
+function compressImage(file, maxW=900, quality=0.75){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function showLightbox(url, caption){
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  overlay.innerHTML = `<img src="${url}">${caption?`<div class="lightbox-caption">${esc(caption)}</div>`:''}`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+/* ---------------- IMPORT HITOS FROM EXCEL / CSV ---------------- */
+const XLSX_LIB_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+
+function loadXlsxLib(){
+  return new Promise((resolve, reject)=>{
+    if(window.XLSX){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = XLSX_LIB_URL;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar la librería de importación'));
+    document.head.appendChild(s);
+  });
+}
+
+function parseFlexibleDate(v){
+  if(v == null || v === '') return null;
+  if(v instanceof Date && !isNaN(v)){
+    return v.toISOString().slice(0,10);
+  }
+  if(typeof v === 'number'){
+    // Excel serial date
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    if(!isNaN(d)) return d.toISOString().slice(0,10);
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = s.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})$/);
+  if(m){
+    let [,d,mo,y] = m;
+    if(y.length===2) y = '20'+y;
+    return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return null;
+}
+
+function findCol(row, patterns){
+  const keys = Object.keys(row);
+  for(const p of patterns){
+    const found = keys.find(k => p.test(k));
+    if(found) return found;
+  }
+  return null;
+}
+
+async function importHitosFromFile(file){
+  await loadXlsxLib();
+  const buf = await file.arrayBuffer();
+  const wb = window.XLSX.read(buf, {type:'array', cellDates:true});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = window.XLSX.utils.sheet_to_json(sheet, {defval:''});
+  const result = [];
+  for(const row of rows){
+    const colNombre = findCol(row, [/^actividad$/i, /^hito$/i, /^nombre$/i, /^tarea$/i]);
+    const colInicio = findCol(row, [/inicio/i, /desde/i, /start/i, /^fecha ?inicio$/i]);
+    const colFin = findCol(row, [/^fin$/i, /t[ée]rmino/i, /hasta/i, /^end$/i]);
+    const nombre = colNombre ? String(row[colNombre]).trim() : '';
+    if(!nombre) continue;
+    const inicio = colInicio ? parseFlexibleDate(row[colInicio]) : null;
+    const fin = colFin ? parseFlexibleDate(row[colFin]) : null;
+    if(!inicio || !fin) continue;
+    result.push({ id: uid('h'), nombre, inicio, fin });
+  }
+  return result;
+}
+
+/* ---------------- EXPORT PPTX ---------------- */
+const PPTX_LIB_URL = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+const PC = { verde:'1F8A4C', verdeTint:'E5F5EB', ambar:'B87A12', ambarTint:'FCF1DE', rojo:'C23B34', rojoTint:'FBE9E7', ink:'1B2430', soft:'5B6472', faint:'8992A0', line:'E1E4E9', bg:'F3F4F6', white:'FFFFFF' };
+const PPTX_THEMES = {
+  marino:   { label:'Marino',   hex:'1F3A5F' },
+  esmeralda:{ label:'Esmeralda',hex:'15603F' },
+  grafito:  { label:'Grafito',  hex:'33414F' },
+  burdeos:  { label:'Burdeos',  hex:'7A2333' }
+};
+
+function loadPptxLib(){
+  return new Promise((resolve, reject)=>{
+    if(window.PptxGenJS){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = PPTX_LIB_URL;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar la librería de exportación'));
+    document.head.appendChild(s);
+  });
+}
+
+function semLabel(color){ return color==='verde' ? 'Verde' : color==='ambar' ? 'Amarillo' : 'Rojo'; }
+function semHex(color){ return color==='verde' ? PC.verde : color==='ambar' ? PC.ambar : PC.rojo; }
+
+function openExportModal(){
+  const count = filteredProjects().length;
+  const body = `
+    <div class="small-note" style="margin-top:0;margin-bottom:14px;">Se exportarán ${count} proyecto(s), los mismos que ves filtrados ahora mismo en el listado.</div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Título del informe</label>
+      <input type="text" id="ex-titulo" value="Estatus General de Proyectos">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Subtítulo</label>
+      <input type="text" id="ex-subtitulo" value="Gerencia de Proyectos y Suministros de Agua">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Tema de color</label>
+      <select id="ex-tema">
+        ${Object.entries(PPTX_THEMES).map(([k,t])=>`<option value="${k}">${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);margin-bottom:4px;">
+      <input type="checkbox" id="ex-portada" checked style="width:auto;"> Incluir lámina de portada
+    </label>
+    <div class="modal-foot" style="padding:18px 0 0;border-top:none;">
+      <button class="btn" type="button" id="ex-cancel">Cancelar</button>
+      <button class="btn primary" type="button" id="ex-generar">Generar presentación</button>
+    </div>
+  `;
+  const ov = openModalShell('Exportar a PowerPoint', body, (ov)=>{
+    ov.querySelector('#ex-cancel').onclick = () => ov.remove();
+    ov.querySelector('#ex-generar').onclick = async () => {
+      const btn = ov.querySelector('#ex-generar');
+      const options = {
+        titulo: ov.querySelector('#ex-titulo').value.trim() || 'Control de proyectos',
+        subtitulo: ov.querySelector('#ex-subtitulo').value.trim(),
+        tema: ov.querySelector('#ex-tema').value,
+        portada: ov.querySelector('#ex-portada').checked
+      };
+      await exportToPPTX(options, btn);
+      ov.remove();
+    };
+  });
+}
+
+async function exportToPPTX(options, btnEl){
+  const original = btnEl ? btnEl.textContent : '';
+  if(btnEl){ btnEl.textContent = 'Generando…'; btnEl.disabled = true; }
+  try{
+    await loadPptxLib();
+    const projects = filteredProjects();
+    if(!projects.length){ alert('No hay proyectos que coincidan con los filtros actuales para exportar.'); return; }
+
+    const accent = (PPTX_THEMES[options.tema] || PPTX_THEMES.marino).hex;
+    const titulo = options.titulo || 'Control de proyectos';
+    const subtitulo = options.subtitulo || '';
+
+    const pptx = new window.PptxGenJS();
+    pptx.defineLayout({ name:'WIDE', width:13.33, height:7.5 });
+    pptx.layout = 'WIDE';
+
+    /* Slide de portada */
+    if(options.portada){
+      let cover = pptx.addSlide();
+      cover.background = { color: PC.white };
+      cover.addShape('rect', { x:0, y:0, w:13.33, h:0.12, fill:{color:accent} });
+      cover.addShape('rect', { x:0, y:2.7, w:1.1, h:0.06, fill:{color:accent} });
+      cover.addText(titulo, { x:0.6, y:2.85, w:12, h:0.9, fontSize:34, bold:true, color:PC.ink, fontFace:'Arial' });
+      if(subtitulo) cover.addText(subtitulo, { x:0.6, y:3.7, w:12, h:0.5, fontSize:16, color:PC.soft, fontFace:'Arial' });
+      cover.addText(`Generado el ${fmtDate(todayISO())}  ·  ${projects.length} proyecto(s) incluidos`, { x:0.6, y:4.2, w:12, h:0.4, fontSize:11.5, color:PC.faint, fontFace:'Arial' });
+    }
+
+    /* Slide(s) de listado */
+    const perSlide = 9;
+    const totalChunks = Math.ceil(projects.length / perSlide);
+    for(let c=0; c<totalChunks; c++){
+      const chunk = projects.slice(c*perSlide, c*perSlide+perSlide);
+      const sl = pptx.addSlide();
+      addHeaderBand(sl, accent, 'Listado de proyectos' + (totalChunks>1 ? `  ·  parte ${c+1} de ${totalChunks}` : ''));
+
+      const headerOpts = { bold:true, color:PC.white, fill:{color:accent}, fontSize:9.5, fontFace:'Arial', valign:'middle' };
+      const rows = [[
+        {text:'N°', options:headerOpts}, {text:'Proyecto', options:headerOpts}, {text:'Área', options:headerOpts}, {text:'Responsable', options:headerOpts},
+        {text:'Requerim.', options:headerOpts}, {text:'Término', options:headerOpts}, {text:'Avance', options:headerOpts},
+        {text:'Brecha', options:headerOpts}, {text:'Est.', options:headerOpts}, {text:'Alerta', options:headerOpts}
+      ]];
+      chunk.forEach((p,ri)=>{
+        const brecha = (p.avanceReal||0) - (p.avancePlan||0);
+        const band = ri % 2 === 1 ? PC.bg : PC.white;
+        rows.push([
+          {text:p.numero!=null?String(p.numero):'—', options:{fontSize:9, fontFace:'Arial', color:PC.faint, fill:{color:band}}},
+          {text:p.nombre, options:{fontSize:9.5, fontFace:'Arial', color:PC.ink, fill:{color:band}}},
+          {text:p.area, options:{fontSize:9, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
+          {text:p.responsable||'—', options:{fontSize:9, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
+          {text:fmtDate(p.fechaRequerimiento), options:{fontSize:8.5, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
+          {text:fmtDate(p.fechaTermino), options:{fontSize:8.5, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
+          {text:`${p.avanceReal||0}% / ${p.avancePlan||0}%`, options:{fontSize:9, fontFace:'Arial', color:PC.ink, fill:{color:band}}},
+          {text:fmtBrecha(brecha), options:{fontSize:9, fontFace:'Arial', color: brecha>=0?PC.verde:PC.rojo, bold:true, fill:{color:band}}},
+          {text:' ', options:{fill:{color:semHex(semaforo(p))}}},
+          {text:' ', options:{fill:{color:semHex(alertaColor(p))}}}
+        ]);
+      });
+      sl.addTable(rows, {
+        x:0.45, y:1.15, w:12.45,
+        colW:[0.4,2.85,1.2,1.4,1.0,1.0,1.1,0.8,0.65,0.65],
+        border:{type:'solid', color:PC.line, pt:0.5},
+        autoPage:false, rowH:0.36, valign:'middle'
+      });
+      sl.addText('Columna "Est." = semáforo de avance según brecha real vs plan  ·  "Alerta" = definida por el dueño del proyecto para relevar en reunión', { x:0.45, y:1.15+0.36*(rows.length)+0.12, w:12.45, h:0.3, fontSize:8.5, italic:true, color:PC.faint, fontFace:'Arial' });
+      addFooter(sl, accent, titulo);
+    }
+
+    /* Una lámina por proyecto */
+    projects.forEach(p => addProjectSlide(pptx, p, accent, titulo));
+
+    await pptx.writeFile({ fileName: (titulo || 'control-proyectos').toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pptx' });
+  }catch(err){
+    console.error(err);
+    alert('No se pudo generar la presentación. Verifica tu conexión e inténtalo de nuevo.');
+  }finally{
+    if(btnEl){ btnEl.textContent = original; btnEl.disabled = false; }
+  }
+}
+
+function addHeaderBand(sl, accent, title){
+  sl.addShape('rect', { x:0, y:0, w:13.33, h:0.82, fill:{color:accent} });
+  sl.addText(title, { x:0.45, y:0.12, w:12.4, h:0.58, fontSize:19, bold:true, color:PC.white, fontFace:'Arial', valign:'middle' });
+}
+
+function addFooter(sl, accent, titulo){
+  sl.addShape('rect', { x:0, y:7.28, w:13.33, h:0.02, fill:{color:PC.line} });
+  sl.addText(titulo, { x:0.45, y:7.32, w:8, h:0.25, fontSize:8, color:PC.faint, fontFace:'Arial' });
+  sl.addText(fmtDate(todayISO()), { x:10.5, y:7.32, w:2.4, h:0.25, fontSize:8, color:PC.faint, fontFace:'Arial', align:'right' });
+}
+
+function addStatusChip(sl, x, y, w, label, color){
+  sl.addShape('roundRect', { x, y, w, h:0.34, fill:{color}, rectRadius:0.06, line:{type:'none'} });
+  sl.addText(label, { x, y, w, h:0.34, fontSize:10.5, bold:true, color:PC.white, align:'center', valign:'middle', fontFace:'Arial' });
+}
+
+function addProjectSlide(pptx, p, accent, titulo){
+  const sl = pptx.addSlide();
+  const sem = semaforo(p), al = alertaColor(p);
+  const brecha = (p.avanceReal||0) - (p.avancePlan||0);
+
+  sl.addShape('rect', { x:0, y:0, w:13.33, h:1.05, fill:{color:accent} });
+  sl.addText((p.numero!=null?'N°'+p.numero+' — ':'')+p.nombre, { x:0.45, y:0.14, w:9.7, h:0.55, fontSize:21, bold:true, color:PC.white, fontFace:'Arial' });
+  sl.addText(`${p.responsable||'sin responsable'}  ·  Etapa: ${p.etapa||'—'}  ·  ${p.estado==='activo'?'Activo':'Archivado'}`, { x:0.45, y:0.66, w:9.7, h:0.32, fontSize:11, color:'D7DEE8', fontFace:'Arial' });
+
+  addStatusChip(sl, 10.35, 0.2, 2.55, `AVANCE ${semLabel(sem).toUpperCase()}`, semHex(sem));
+  addStatusChip(sl, 10.35, 0.6, 2.55, `ALERTA ${semLabel(al).toUpperCase()}`, semHex(al));
+
+  sl.addText([
+    { text:'Avance real: ', options:{bold:true, color:PC.soft} },
+    { text:`${p.avanceReal||0}%    `, options:{color:PC.ink, bold:true} },
+    { text:'Avance plan: ', options:{bold:true, color:PC.soft} },
+    { text:`${p.avancePlan||0}%    `, options:{color:PC.ink} },
+    { text:'Brecha: ', options:{bold:true, color:PC.soft} },
+    { text:fmtBrecha(brecha), options:{color: brecha>=0?PC.verde:PC.rojo, bold:true} }
+  ], { x:0.45, y:1.22, w:8.5, h:0.32, fontSize:11.5, fontFace:'Arial' });
+
+  sl.addText([
+    { text:'Requerimiento: ', options:{bold:true, color:PC.soft} },
+    { text:fmtDate(p.fechaRequerimiento)+'    ', options:{color:PC.ink} },
+    { text:'Término proyectado: ', options:{bold:true, color:PC.soft} },
+    { text:fmtDate(p.fechaTermino), options:{color:PC.ink} }
+  ], { x:0.45, y:1.55, w:9.7, h:0.3, fontSize:10.5, fontFace:'Arial' });
+
+  let topY = 1.95;
+  if(al !== 'verde' && p.alerta && p.alerta.comentario){
+    sl.addShape('roundRect', { x:0.45, y:topY, w:12.45, h:0.55, fill:{color: al==='rojo' ? PC.rojoTint : PC.ambarTint}, rectRadius:0.04, line:{color:semHex(al), width:0.75} });
+    sl.addText(`Para relevar en reunión:  ${p.alerta.comentario}`, { x:0.65, y:topY+0.03, w:12.1, h:0.49, fontSize:10, color:PC.ink, fontFace:'Arial', valign:'middle' });
+    topY += 0.7;
+  }
+
+  /* columna izquierda: hitos + riesgos */
+  sl.addText('CARTA GANTT (PLAN)', { x:0.45, y:topY, w:7.55, h:0.28, fontSize:11, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
+  const hitos = (p.hitos||[]).slice(0,9);
+  let afterHitosY = topY + 0.33;
+  if(hitos.length){
+    const hRows = [[
+      {text:'Actividad', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}},
+      {text:'Inicio', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}},
+      {text:'Fin', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}}
+    ]];
+    hitos.forEach((h,ri)=>{
+      const band = ri % 2 === 1 ? PC.bg : PC.white;
+      hRows.push([
+        {text:h.nombre, options:{fontSize:9, fontFace:'Arial', color:PC.ink, fill:{color:band}}},
+        {text:fmtDate(h.inicio), options:{fontSize:8, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
+        {text:fmtDate(h.fin), options:{fontSize:8, fontFace:'Arial', color:PC.soft, fill:{color:band}}}
+      ]);
+    });
+    sl.addTable(hRows, { x:0.45, y:afterHitosY, w:7.55, colW:[4.85,1.35,1.35], border:{type:'solid', color:PC.line, pt:0.5}, rowH:0.24, autoPage:false, valign:'middle' });
+    afterHitosY += 0.24 * hRows.length;
+    if((p.hitos||[]).length > 9){
+      sl.addText(`+ ${p.hitos.length-9} actividad(es) adicionales — ver detalle en la app`, { x:0.45, y:afterHitosY+0.04, w:7.55, h:0.22, fontSize:8, italic:true, color:PC.faint, fontFace:'Arial' });
+      afterHitosY += 0.24;
+    }
+  } else {
+    sl.addText('Sin hitos cargados.', { x:0.45, y:afterHitosY, w:7.55, h:0.28, fontSize:9.5, color:PC.faint, italic:true, fontFace:'Arial' });
+    afterHitosY += 0.3;
+  }
+
+  const riesgosY = afterHitosY + 0.28;
+  sl.addText('PRINCIPALES RIESGOS', { x:0.45, y:riesgosY, w:7.55, h:0.28, fontSize:11, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
+  const riesgos = (p.riesgos||[]).slice(0,5);
+  if(riesgos.length){
+    sl.addText(riesgos.map(r => ({
+      text: `${r.descripcion}  (${r.nivel})`,
+      options: { bullet:{code:'25CF'}, fontSize:9.5, color: r.nivel==='alto'?PC.rojo:r.nivel==='medio'?PC.ambar:PC.verde, fontFace:'Arial', breakLine:true }
+    })), { x:0.45, y:riesgosY+0.32, w:7.55, h:1.5 });
+  } else {
+    sl.addText('Sin riesgos registrados.', { x:0.45, y:riesgosY+0.32, w:7.55, h:0.28, fontSize:9.5, color:PC.faint, italic:true, fontFace:'Arial' });
+  }
+
+  /* columna derecha: presupuesto + apoyos */
+  const rightX = 8.35, rightW = 4.55;
+  sl.addText('PRESUPUESTO', { x:rightX, y:topY, w:rightW, h:0.28, fontSize:11, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
+  const pctEjec = p.presupuesto ? Math.min(100, Math.round((p.ejecutado||0)/p.presupuesto*100)) : 0;
+  sl.addShape('roundRect', { x:rightX, y:topY+0.38, w:rightW, h:0.2, fill:{color:PC.bg}, rectRadius:0.1, line:{type:'none'} });
+  if(pctEjec>0) sl.addShape('roundRect', { x:rightX, y:topY+0.38, w:rightW*(pctEjec/100), h:0.2, fill:{color:accent}, rectRadius:0.1, line:{type:'none'} });
+  sl.addText(`Ejecutado: ${fmtMoney(p.ejecutado)}  (${pctEjec}%)`, { x:rightX, y:topY+0.63, w:rightW, h:0.24, fontSize:9.5, color:PC.ink, fontFace:'Arial' });
+  sl.addText(`Presupuestado: ${fmtMoney(p.presupuesto)}`, { x:rightX, y:topY+0.87, w:rightW, h:0.24, fontSize:9.5, color:PC.soft, fontFace:'Arial' });
+
+  sl.addText('REQUERIMIENTOS DE APOYO', { x:rightX, y:topY+1.35, w:rightW, h:0.28, fontSize:11, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
+  const apoyos = (p.apoyos||[]).slice(0,5);
+  if(apoyos.length){
+    sl.addText(apoyos.map(a => ({ text:a.descripcion, options:{ bullet:{code:'25CF'}, fontSize:9.5, color:PC.ink, fontFace:'Arial', breakLine:true } })), { x:rightX, y:topY+1.67, w:rightW, h:1.5 });
+  } else {
+    sl.addText('Sin requerimientos registrados.', { x:rightX, y:topY+1.67, w:rightW, h:0.28, fontSize:9.5, color:PC.faint, italic:true, fontFace:'Arial' });
+  }
+
+  addFooter(sl, accent, titulo);
+}
+
+loadData();
+</script>
+</body>
+</html>
