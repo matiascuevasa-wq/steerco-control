@@ -162,11 +162,13 @@ tbody tr:last-child td{border-bottom:none;}
 .mchip.qedit{cursor:pointer;transition:.12s;}
 .mchip.qedit:hover{box-shadow:0 0 0 2px var(--navy) inset;}
 .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start;}
-.detail-summary-grid{align-items:stretch;}
+.detail-summary-grid3{display:grid;grid-template-columns:1fr 1fr 0.9fr;gap:16px;align-items:stretch;margin-top:16px;}
 .budget-column{display:flex;flex-direction:column;height:100%;}
 .budget-panel{display:flex;flex-direction:column;flex:1;}
 .budget-panel .panel-body{flex:1;}
-@media(max-width:860px){.grid2{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);}}
+.historial-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);margin:16px 0 4px;cursor:pointer;user-select:none;}
+.historial-toggle input{width:auto;cursor:pointer;}
+@media(max-width:860px){.grid2{grid-template-columns:1fr;} .detail-summary-grid3{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);}}
 
 /* gantt */
 .gantt-row{display:flex;align-items:center;gap:10px;padding:3px 0;border-bottom:1px solid var(--bg);}
@@ -308,6 +310,7 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
 .slide-view .gantt-axis-track{height:12px;}
 .slide-view .gantt-axis-tick{font-size:8.5px;}
 .slide-view .grid2{grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.slide-view .detail-summary-grid3{gap:8px;margin-top:8px;}
 .slide-view .tag-item{font-size:10px;padding:3px 0;}
 .slide-view .hito-item{font-size:10px;padding:3px 0;}
 .slide-view .repeat-row{margin-top:6px;gap:4px;}
@@ -361,6 +364,7 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
   .proj-name{font-size:13px;}
 
   .grid2{grid-template-columns:1fr !important;}
+  .detail-summary-grid3{grid-template-columns:1fr !important;}
   .form-grid{grid-template-columns:1fr !important;}
   .repeat-row{flex-wrap:wrap;gap:6px;}
   .repeat-row input,.repeat-row select{flex:1 1 auto;min-width:120px;}
@@ -565,6 +569,7 @@ STATE.polling = false;
 STATE.loginSelected = '';
 STATE.loginError = '';
 STATE.slideMode = false;
+STATE.showHistorial = false;
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -1685,7 +1690,7 @@ function renderDetailView(){
     <div class="panel-body"><div class="gantt-wrap">${ganttAxis}${ganttRows}</div></div>
   </div>
 
-  <div class="grid2 detail-summary-grid">
+  <div class="detail-summary-grid3">
     <div>
       <div class="panel">
         <div class="panel-head"><h2>Highlights</h2></div>
@@ -1695,6 +1700,8 @@ function renderDetailView(){
         <div class="panel-head"><h2>Lowlights</h2></div>
         <div class="panel-body">${lowlightList}</div>
       </div>
+    </div>
+    <div>
       <div class="panel">
         <div class="panel-head"><h2>Principales riesgos</h2></div>
         <div class="panel-body">${riesgoList}</div>
@@ -1716,10 +1723,15 @@ function renderDetailView(){
     </div>
   </div>
 
+  <label class="historial-toggle">
+    <input type="checkbox" data-action="toggle-historial" ${STATE.showHistorial?'checked':''}>
+    Mostrar historial de actualizaciones
+  </label>
+  ${STATE.showHistorial ? `
   <div class="panel historial-panel">
     <div class="panel-head"><h2>Historial de actualizaciones</h2></div>
     <div class="panel-body">${logList}</div>
-  </div>
+  </div>` : ''}
   </div>
   `;
 }
@@ -2013,6 +2025,7 @@ function handleAction(action, el){
     case 'open-detail': STATE.selectedId = el.dataset.id; STATE.view='detail'; render(); break;
     case 'switch-project': STATE.selectedId = el.value; render(); break;
     case 'toggle-slide-mode': STATE.slideMode = !STATE.slideMode; render(); break;
+    case 'toggle-historial': STATE.showHistorial = !STATE.showHistorial; render(); break;
     case 'filter-estado': STATE.filterEstado = el.value; render(); break;
     case 'filter-area': STATE.filterArea = el.value; render(); break;
     case 'filter-semaforo': STATE.filterSemaforo = el.value; render(); break;
