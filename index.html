@@ -502,6 +502,10 @@ async function fbDeleteAllProjects(){
     await deleteDoc(doc(db, PROJECTS_COLLECTION, d.id));
   }
 }
+async function fbDeleteProject(id){
+  await fbReady;
+  await deleteDoc(doc(db, PROJECTS_COLLECTION, id));
+}
 function fbListenProjects(callback){
   return onSnapshot(collection(db, PROJECTS_COLLECTION), (snap) => {
     const out = [];
@@ -1672,6 +1676,7 @@ function renderDetailView(){
           ${p.estado==='activo'
             ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
             : `<button class="btn" data-action="unarchive" data-id="${p.id}">Reactivar</button>`}
+          <button class="btn danger" data-action="delete-project" data-id="${p.id}" title="Elimina el proyecto por completo, no queda ni como archivado">Eliminar definitivamente</button>
           ` : ''}
           ${!canUpdate(p) ? `<div class="readonly-note">Proyecto de ${esc(p.area)} — solo lectura desde tu sesión.</div>` : ''}
         </div>
@@ -2037,6 +2042,7 @@ function handleAction(action, el){
     case 'open-edit': openProjectModal(getProject(el.dataset.id)); break;
     case 'archive': setEstado(el.dataset.id, 'archivado'); break;
     case 'unarchive': setEstado(el.dataset.id, 'activo'); break;
+    case 'delete-project': deleteProject(el.dataset.id); break;
     case 'login': {
       const sel = document.getElementById('login-select');
       const pwd = document.getElementById('login-password');
@@ -2095,12 +2101,14 @@ function handleAction(action, el){
     }
     case 'quick-edit-presupuesto': {
       const p = getProject(el.dataset.id); if(!p || !canUpdate(p)) break;
-      const fields = [{key:'ejecutado', label:'Ejecutado ($)', type:'number', value:p.ejecutado||0, min:0}];
-      if(canFullEdit(p)) fields.unshift({key:'presupuesto', label:'Presupuestado ($)', type:'number', value:p.presupuesto||0, min:0});
+      const fields = [
+        {key:'presupuesto', label:'Presupuestado — target ($)', type:'number', value:p.presupuesto||0, min:0},
+        {key:'ejecutado', label:'Ejecutado ($)', type:'number', value:p.ejecutado||0, min:0}
+      ];
       openQuickEdit(p.id, 'Actualizar presupuesto', fields, async (vals, proj) => {
-        if(vals.presupuesto != null) proj.presupuesto = Math.max(0, Number(vals.presupuesto)||0);
+        proj.presupuesto = Math.max(0, Number(vals.presupuesto)||0);
         proj.ejecutado = Math.max(0, Number(vals.ejecutado)||0);
-        logCambio(proj, `Actualizó presupuesto ejecutado a ${fmtMoney(proj.ejecutado)}`);
+        logCambio(proj, `Actualizó presupuesto: target ${fmtMoney(proj.presupuesto)}, ejecutado ${fmtMoney(proj.ejecutado)}`);
         await saveData();
       });
       break;
@@ -2218,6 +2226,27 @@ async function removeCategoryItem(stateKey, idx, projectFieldKey, saveFn){
   }
   STATE[stateKey].splice(idx,1);
   await saveFn();
+  render();
+}
+
+async function deleteProject(id){
+  if(!isExcelencia()) return;
+  const p = getProject(id);
+  if(!p) return;
+  const c1 = confirm(`Esto va a ELIMINAR PERMANENTEMENTE el proyecto "${p.nombre}" (N°${p.numero}), incluyendo su Gantt, riesgos, historial y foto. No se puede deshacer. ¿Continuar?`);
+  if(!c1) return;
+  const c2 = confirm('Confirmación final: esto lo borra para siempre (no queda como archivado, desaparece del todo). ¿Eliminar de todas formas?');
+  if(!c2) return;
+  try{
+    await fbDeleteProject(id);
+  }catch(e){
+    console.error('No se pudo eliminar el proyecto:', e);
+    alert('No se pudo eliminar el proyecto. Revisá la consola del navegador para más detalles.');
+    return;
+  }
+  STATE.projects = STATE.projects.filter(x=>x.id!==id);
+  STATE.selectedId = null;
+  STATE.view = 'list';
   render();
 }
 
@@ -2381,14 +2410,14 @@ function openProjectModal(project){
       </div>
       <div class="field"><label>Fecha inicio proyecto</label><input type="date" id="f-finicio" value="${p.fechaInicio||''}"></div>
       <div class="field"><label>Fecha proyectada de término</label><input type="date" id="f-ftermino" value="${p.fechaTermino||''}"></div>
-      <div class="field"><label>Fecha de término requerida</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
-      <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
+      <div class="field"><label>Fecha de término requerida${!isNew?' <span style="font-weight:400;color:var(--ink-faint);">(solo Excelencia puede cambiarla tras la creación)</span>':''}</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
     </div>` : ''}
 
     <div class="form-grid" style="margin-top:${fullAccess?'12px':'0'};">
       <div class="field"><label>% avance plan (de la etapa)</label><input type="number" id="f-avanceplan" min="0" max="100" value="${p.avancePlan||0}"></div>
       <div class="field"><label>% avance real (de la etapa)</label><input type="number" id="f-avancereal" min="0" max="100" value="${p.avanceReal||0}"></div>
       <div class="field"><label>Etapa actual</label><select id="f-etapa">${ETAPAS.map(e=>`<option ${e===(p.etapa||'Estudio')?'selected':''}>${e}</option>`).join('')}</select></div>
+      <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
       <div class="field"><label>Ejecutado ($)</label><input type="number" id="f-ejecutado" min="0" value="${p.ejecutado||0}"></div>
     </div>
 
@@ -2640,7 +2669,6 @@ function openProjectModal(project){
         p.fechaRequerimiento = ov.querySelector('#f-freq').value;
         p.fechaInicio = ov.querySelector('#f-finicio').value;
         p.fechaTermino = ov.querySelector('#f-ftermino').value;
-        p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
         p.sesion = ov.querySelector('#f-sesion').value || null;
         p.tipoProyecto = ov.querySelector('#f-tipo').value || null;
         p.kpiDriver = ov.querySelector('#f-kpi').value || null;
@@ -2649,6 +2677,7 @@ function openProjectModal(project){
       p.avancePlan = Math.max(0, Math.min(100, Number(ov.querySelector('#f-avanceplan').value)||0));
       p.avanceReal = Math.max(0, Math.min(100, Number(ov.querySelector('#f-avancereal').value)||0));
       p.etapa = ov.querySelector('#f-etapa').value;
+      p.presupuesto = Number(ov.querySelector('#f-presupuesto').value)||0;
       p.ejecutado = Number(ov.querySelector('#f-ejecutado').value)||0;
       p.alerta = { color: ov.querySelector('#f-alerta-color').value, comentario: ov.querySelector('#f-alerta-comentario').value.trim() };
       p.imagen = imagenData;
