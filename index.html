@@ -162,13 +162,11 @@ tbody tr:last-child td{border-bottom:none;}
 .mchip.qedit{cursor:pointer;transition:.12s;}
 .mchip.qedit:hover{box-shadow:0 0 0 2px var(--navy) inset;}
 .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start;}
-.detail-summary-grid3{display:grid;grid-template-columns:1fr 1fr 0.9fr;gap:16px;align-items:stretch;margin-top:16px;}
-.budget-column{display:flex;flex-direction:column;height:100%;}
-.budget-panel{display:flex;flex-direction:column;flex:1;}
-.budget-panel .panel-body{flex:1;}
+.detail-row3{display:grid;grid-template-columns:1fr 1fr 0.85fr;gap:16px;align-items:start;margin-top:16px;}
+.detail-row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px;}
+@media(max-width:860px){.grid2{grid-template-columns:1fr;} .detail-row3{grid-template-columns:1fr;} .detail-row2{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);}}
 .historial-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);margin:16px 0 4px;cursor:pointer;user-select:none;}
 .historial-toggle input{width:auto;cursor:pointer;}
-@media(max-width:860px){.grid2{grid-template-columns:1fr;} .detail-summary-grid3{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);}}
 
 /* gantt */
 .gantt-row{display:flex;align-items:center;gap:10px;padding:3px 0;border-bottom:1px solid var(--bg);}
@@ -310,7 +308,8 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
 .slide-view .gantt-axis-track{height:12px;}
 .slide-view .gantt-axis-tick{font-size:8.5px;}
 .slide-view .grid2{grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.slide-view .detail-summary-grid3{gap:8px;margin-top:8px;}
+.slide-view .detail-row3{gap:8px;margin-top:8px;}
+.slide-view .detail-row2{gap:8px;margin-top:8px;}
 .slide-view .tag-item{font-size:10px;padding:3px 0;}
 .slide-view .hito-item{font-size:10px;padding:3px 0;}
 .slide-view .repeat-row{margin-top:6px;gap:4px;}
@@ -364,7 +363,8 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
   .proj-name{font-size:13px;}
 
   .grid2{grid-template-columns:1fr !important;}
-  .detail-summary-grid3{grid-template-columns:1fr !important;}
+  .detail-row3{grid-template-columns:1fr !important;}
+  .detail-row2{grid-template-columns:1fr !important;}
   .form-grid{grid-template-columns:1fr !important;}
   .repeat-row{flex-wrap:wrap;gap:6px;}
   .repeat-row input,.repeat-row select{flex:1 1 auto;min-width:120px;}
@@ -1502,8 +1502,8 @@ function renderListView(){
         <span class="brecha ${brecha>=0?'pos':'neg'}">${fmtBrecha(brecha)}</span>
       </div>
       <div class="proj-card-row">
-        <span class="mono">Req: ${fmtDate(p.fechaRequerimiento)}</span>
-        <span class="mono">Térm: ${fmtDate(p.fechaTermino)}</span>
+        <span class="mono">Térm. req: ${fmtDate(p.fechaRequerimiento)}</span>
+        <span class="mono">Térm. proy: ${fmtDate(p.fechaTermino)}</span>
       </div>
       <div class="proj-card-row">
         <span class="semaforo"><span class="dot ${sem}"></span> Avance</span>
@@ -1551,8 +1551,8 @@ function renderListView(){
         <thead><tr>
           <th class="sortable" data-action="sort-by" data-key="numero">N°${sortArrow('numero')}</th>
           <th class="sortable" data-action="sort-by" data-key="nombre">Proyecto${sortArrow('nombre')}</th>
-          <th class="sortable" data-action="sort-by" data-key="fechaRequerimiento">Fecha requerimiento${sortArrow('fechaRequerimiento')}</th>
-          <th class="sortable" data-action="sort-by" data-key="fechaTermino">Fecha proyectada término${sortArrow('fechaTermino')}</th>
+          <th class="sortable" data-action="sort-by" data-key="fechaRequerimiento">Fecha término requerida${sortArrow('fechaRequerimiento')}</th>
+          <th class="sortable" data-action="sort-by" data-key="fechaTermino">Fecha proyectada de término${sortArrow('fechaTermino')}</th>
           <th class="sortable" data-action="sort-by" data-key="avance">% avance real / plan${sortArrow('avance')}</th>
           <th class="sortable" data-action="sort-by" data-key="brecha">Brecha${sortArrow('brecha')}</th>
           <th>Avance</th><th>Alerta</th>
@@ -1657,8 +1657,9 @@ function renderDetailView(){
             <div class="mchip"><span class="mc-label">Tipo</span><span class="mc-value">${esc(p.tipoProyecto||'—')}</span></div>
             <div class="mchip"><span class="mc-label">KPI Driver</span><span class="mc-value">${esc(p.kpiDriver||'—')}</span></div>
             <div class="mchip"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
-            <div class="mchip"><span class="mc-label">Requerimiento</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
-            <div class="mchip"><span class="mc-label">Término proyectado</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
+            <div class="mchip"><span class="mc-label">Fecha inicio proyecto</span><span class="mc-value">${fmtDate(p.fechaInicio)}</span></div>
+            <div class="mchip"><span class="mc-label">Fecha proyectada de término</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
+            <div class="mchip"><span class="mc-label">Fecha de término requerida</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
             <div class="mchip sem ${sem}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-avance" data-id="${p.id}" title="Clic para actualizar el avance"`:''}><span class="dot ${sem}"></span><span><span class="mc-label" style="display:block;">Avance</span><span class="mc-value">${p.avanceReal||0}% / ${p.avancePlan||0}% (${fmtBrecha(brecha)})</span></span></div>
             <div class="mchip sem ${al}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-alerta" data-id="${p.id}" title="Clic para cambiar la alerta"`:''}><span class="dot ${al}"></span><span><span class="mc-label" style="display:block;">Alerta</span><span class="mc-value">${al==='verde'?'Sin alerta':al==='ambar'?'Amarilla':'Roja'}</span></span></div>
             <div class="mchip"><span class="mc-label">Estado</span><span class="mc-value">${p.estado==='activo'?'Activo':'Archivado'}</span></div>
@@ -1666,6 +1667,7 @@ function renderDetailView(){
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${canUpdate(p) ? `<button class="btn primary" data-action="open-edit" data-id="${p.id}">${canFullEdit(p)?'Editar proyecto':'Actualizar proyecto'}</button>` : ''}
+          <button class="btn" id="export-single-btn" data-action="export-single-pptx" data-id="${p.id}">Exportar a PPT</button>
           ${canFullEdit(p) ? `
           ${p.estado==='activo'
             ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
@@ -1690,36 +1692,33 @@ function renderDetailView(){
     <div class="panel-body"><div class="gantt-wrap">${ganttAxis}${ganttRows}</div></div>
   </div>
 
-  <div class="detail-summary-grid3">
-    <div>
-      <div class="panel">
-        <div class="panel-head"><h2>Highlights</h2></div>
-        <div class="panel-body">${highlightList}</div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Lowlights</h2></div>
-        <div class="panel-body">${lowlightList}</div>
+  <div class="detail-row3">
+    <div class="panel">
+      <div class="panel-head"><h2>Highlights</h2></div>
+      <div class="panel-body">${highlightList}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Lowlights</h2></div>
+      <div class="panel-body">${lowlightList}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Presupuesto</h2>${canUpdate(p)?`<button class="btn ghost sm" data-action="quick-edit-presupuesto" data-id="${p.id}" title="Editar presupuesto">✎ Editar</button>`:''}</div>
+      <div class="panel-body">
+        <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${pctEjec}%"></div></div>
+        <div class="budget-nums"><span>Ejecutado: <b>${fmtMoney(p.ejecutado)}</b></span><span>${pctEjec}%</span></div>
+        <div class="budget-nums" style="margin-top:4px;"><span>Presupuestado</span><b>${fmtMoney(p.presupuesto)}</b></div>
       </div>
     </div>
-    <div>
-      <div class="panel">
-        <div class="panel-head"><h2>Principales riesgos</h2></div>
-        <div class="panel-body">${riesgoList}</div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Requerimientos de apoyo</h2></div>
-        <div class="panel-body">${apoyoList}</div>
-      </div>
+  </div>
+
+  <div class="detail-row2">
+    <div class="panel">
+      <div class="panel-head"><h2>Principales riesgos</h2></div>
+      <div class="panel-body">${riesgoList}</div>
     </div>
-    <div class="budget-column">
-      <div class="panel budget-panel">
-        <div class="panel-head"><h2>Presupuesto</h2>${canUpdate(p)?`<button class="btn ghost sm" data-action="quick-edit-presupuesto" data-id="${p.id}" title="Editar presupuesto">✎ Editar</button>`:''}</div>
-        <div class="panel-body">
-          <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${pctEjec}%"></div></div>
-          <div class="budget-nums"><span>Ejecutado: <b>${fmtMoney(p.ejecutado)}</b></span><span>${pctEjec}%</span></div>
-          <div class="budget-nums" style="margin-top:4px;"><span>Presupuestado</span><b>${fmtMoney(p.presupuesto)}</b></div>
-        </div>
-      </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Requerimientos de apoyo</h2></div>
+      <div class="panel-body">${apoyoList}</div>
     </div>
   </div>
 
@@ -2141,6 +2140,7 @@ function handleAction(action, el){
     case 'add-kpi': addCategoryItem('kpiDrivers', 'nk-nombre', saveKpiDrivers); break;
     case 'remove-kpi': removeCategoryItem('kpiDrivers', Number(el.dataset.idx), 'kpiDriver', saveKpiDrivers); break;
     case 'export-pptx': openExportModal(); break;
+    case 'export-single-pptx': { const p = getProject(el.dataset.id); if(p) exportSingleProjectPPTX(p, el); break; }
     case 'open-lightbox': { const p = getProject(el.dataset.id); if(p && p.imagen) showLightbox(p.imagen, p.nombre); break; }
     case 'photo-quick-upload': quickUploadPhoto(el.dataset.id); break;
   }
@@ -2379,9 +2379,9 @@ function openProjectModal(project){
       <div class="field"><label>Estado</label>
         <select id="f-estado"><option value="activo" ${p.estado==='activo'?'selected':''}>Activo</option><option value="archivado" ${p.estado==='archivado'?'selected':''}>Archivado</option></select>
       </div>
-      <div class="field"><label>Fecha de requerimiento</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
-      <div class="field"><label>Fecha de inicio</label><input type="date" id="f-finicio" value="${p.fechaInicio||''}"></div>
+      <div class="field"><label>Fecha inicio proyecto</label><input type="date" id="f-finicio" value="${p.fechaInicio||''}"></div>
       <div class="field"><label>Fecha proyectada de término</label><input type="date" id="f-ftermino" value="${p.fechaTermino||''}"></div>
+      <div class="field"><label>Fecha de término requerida</label><input type="date" id="f-freq" value="${p.fechaRequerimiento||''}"></div>
       <div class="field"><label>Presupuesto ($)</label><input type="number" id="f-presupuesto" min="0" value="${p.presupuesto||0}"></div>
     </div>` : ''}
 
@@ -3019,14 +3019,77 @@ function addStatusChip(sl, x, y, w, label, color){
   sl.addText(label, { x, y, w, h:0.34, fontSize:10.5, bold:true, color:PC.white, align:'center', valign:'middle', fontFace:'Arial' });
 }
 
+function addCardBox(sl, x, y, w, h, title, accent, extraHeaderText){
+  sl.addShape('roundRect', { x, y, w, h, fill:{color:PC.white}, line:{color:PC.line, width:0.75}, rectRadius:0.05 });
+  sl.addText(title, { x:x+0.15, y:y+0.08, w:w-1.1, h:0.24, fontSize:9.5, bold:true, color:accent, fontFace:'Arial' });
+  if(extraHeaderText){
+    sl.addText(extraHeaderText, { x:x+w-1.0, y:y+0.08, w:0.9, h:0.24, fontSize:7.5, color:PC.faint, fontFace:'Arial', align:'right' });
+  }
+  sl.addShape('line', { x:x+0.15, y:y+0.34, w:w-0.3, h:0, line:{color:PC.line, width:0.5} });
+  return { x:x+0.18, y:y+0.42, w:w-0.36, h:h-0.55 };
+}
+
+function addBulletBox(sl, box, items, emptyText){
+  if(!items.length){
+    sl.addText(emptyText, { x:box.x, y:box.y, w:box.w, h:0.2, fontSize:8, italic:true, color:PC.faint, fontFace:'Arial' });
+    return;
+  }
+  sl.addText(items.map(t => ({ text:t.text, options:{ bullet:{code:'25CF'}, fontSize:8, color:t.color||PC.ink, fontFace:'Arial', breakLine:true } })), { x:box.x, y:box.y, w:box.w, h:box.h, valign:'top' });
+}
+
+function addGanttVisual(sl, p, x, y, w, h, accent){
+  sl.addText('CARTA GANTT (PLAN)', { x, y, w, h:0.22, fontSize:10, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
+  const chartY = y + 0.28;
+  const chartH = h - 0.28;
+  const hitos = (p.hitos||[]).slice(0,8);
+  if(!hitos.length){
+    sl.addText('Sin hitos cargados.', { x, y:chartY, w, h:0.3, fontSize:9, italic:true, color:PC.faint, fontFace:'Arial' });
+    return;
+  }
+  let minD=null, maxD=null;
+  hitos.forEach(hh=>{
+    if(!minD||hh.inicio<minD) minD=hh.inicio;
+    if(!maxD||hh.fin>maxD) maxD=hh.fin;
+  });
+  const totalDays = Math.max(1, daysBetween(minD,maxD));
+  const labelW = w*0.30;
+  const trackX = x + labelW + 0.1;
+  const trackW = w - labelW - 0.1;
+  const axisH = 0.16;
+  const rowsH = chartH - axisH - 0.04;
+  const rowH = Math.max(0.16, Math.min(0.27, rowsH / hitos.length));
+
+  const {ticks} = buildTimeTicks(minD, maxD);
+  ticks.forEach(t=>{
+    const off = Math.max(0, Math.min(1, daysBetween(minD, t.date)/totalDays));
+    sl.addText(t.label, { x: trackX + trackW*off - 0.35, y: chartY, w:0.7, h:axisH, fontSize:6.5, color:PC.faint, align:'center', fontFace:'Arial' });
+  });
+  sl.addShape('line', { x:trackX, y:chartY+axisH, w:trackW, h:0, line:{color:PC.line, width:0.5} });
+
+  const barsY = chartY + axisH + 0.04;
+  hitos.forEach((hh,i)=>{
+    const ry = barsY + i*rowH;
+    sl.addText(hh.nombre, { x, y:ry, w:labelW, h:rowH, fontSize:7, color:PC.ink, fontFace:'Arial', valign:'middle' });
+    const off = Math.max(0, daysBetween(minD, hh.inicio)/totalDays);
+    const dur = Math.max(0.012, daysBetween(hh.inicio, hh.fin)/totalDays);
+    sl.addShape('roundRect', {
+      x: trackX + trackW*off, y: ry+rowH*0.22, w: Math.max(0.06, trackW*Math.min(dur, 1-off)), h: rowH*0.56,
+      fill:{color:'AEB9CC'}, line:{color:'8E9CB5', width:0.5}, rectRadius:0.015
+    });
+  });
+  if((p.hitos||[]).length > 8){
+    sl.addText(`+ ${p.hitos.length-8} actividad(es) adicionales — ver detalle en la app`, { x, y: barsY + hitos.length*rowH + 0.02, w, h:0.16, fontSize:6.5, italic:true, color:PC.faint, fontFace:'Arial' });
+  }
+}
+
 function addProjectSlide(pptx, p, accent, titulo){
   const sl = pptx.addSlide();
   const sem = semaforo(p), al = alertaColor(p);
   const brecha = (p.avanceReal||0) - (p.avancePlan||0);
 
   sl.addShape('rect', { x:0, y:0, w:13.33, h:1.05, fill:{color:accent} });
-  sl.addText((p.numero!=null?'N°'+p.numero+' — ':'')+p.nombre, { x:0.45, y:0.14, w:9.7, h:0.55, fontSize:21, bold:true, color:PC.white, fontFace:'Arial' });
-  sl.addText(`${p.responsable||'sin responsable'}  ·  Etapa: ${p.etapa||'—'}  ·  ${p.estado==='activo'?'Activo':'Archivado'}`, { x:0.45, y:0.66, w:9.7, h:0.32, fontSize:11, color:'D7DEE8', fontFace:'Arial' });
+  sl.addText((p.numero!=null?'N°'+p.numero+' — ':'')+p.nombre, { x:0.45, y:0.14, w:9.7, h:0.55, fontSize:20, bold:true, color:PC.white, fontFace:'Arial' });
+  sl.addText(`${p.responsable||'sin responsable'}  ·  Etapa: ${p.etapa||'—'}  ·  ${p.estado==='activo'?'Activo':'Archivado'}`, { x:0.45, y:0.66, w:9.7, h:0.3, fontSize:10.5, color:'D7DEE8', fontFace:'Arial' });
 
   addStatusChip(sl, 10.35, 0.2, 2.55, `AVANCE ${semLabel(sem).toUpperCase()}`, semHex(sem));
   addStatusChip(sl, 10.35, 0.6, 2.55, `ALERTA ${semLabel(al).toUpperCase()}`, semHex(al));
@@ -3038,110 +3101,79 @@ function addProjectSlide(pptx, p, accent, titulo){
     { text:`${p.avancePlan||0}%    `, options:{color:PC.ink} },
     { text:'Brecha: ', options:{bold:true, color:PC.soft} },
     { text:fmtBrecha(brecha), options:{color: brecha>=0?PC.verde:PC.rojo, bold:true} }
-  ], { x:0.45, y:1.22, w:8.5, h:0.32, fontSize:11.5, fontFace:'Arial' });
+  ], { x:0.45, y:1.1, w:9.7, h:0.24, fontSize:10, fontFace:'Arial' });
 
   sl.addText([
-    { text:'Requerimiento: ', options:{bold:true, color:PC.soft} },
-    { text:fmtDate(p.fechaRequerimiento)+'    ', options:{color:PC.ink} },
-    { text:'Término proyectado: ', options:{bold:true, color:PC.soft} },
-    { text:fmtDate(p.fechaTermino), options:{color:PC.ink} }
-  ], { x:0.45, y:1.55, w:9.7, h:0.3, fontSize:10.5, fontFace:'Arial' });
+    { text:'Inicio: ', options:{bold:true, color:PC.soft} },
+    { text:fmtDate(p.fechaInicio)+'   ', options:{color:PC.ink} },
+    { text:'Térm. proyectado: ', options:{bold:true, color:PC.soft} },
+    { text:fmtDate(p.fechaTermino)+'   ', options:{color:PC.ink} },
+    { text:'Térm. requerido: ', options:{bold:true, color:PC.soft} },
+    { text:fmtDate(p.fechaRequerimiento), options:{color:PC.ink} }
+  ], { x:0.45, y:1.34, w:12.45, h:0.22, fontSize:8.5, fontFace:'Arial' });
 
-  let topY = 1.95;
+  let y = 1.58;
   if(al !== 'verde' && p.alerta && p.alerta.comentario){
-    sl.addShape('roundRect', { x:0.45, y:topY, w:12.45, h:0.5, fill:{color: al==='rojo' ? PC.rojoTint : PC.ambarTint}, rectRadius:0.04, line:{color:semHex(al), width:0.75} });
-    sl.addText(p.alerta.comentario, { x:0.65, y:topY+0.02, w:12.1, h:0.46, fontSize:9.5, color:PC.ink, fontFace:'Arial', valign:'middle' });
-    topY += 0.65;
-  }
-
-  /* Carta Gantt — ancho completo, como en la app */
-  sl.addText('CARTA GANTT (PLAN)', { x:0.45, y:topY, w:12.45, h:0.26, fontSize:10.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
-  const hitos = (p.hitos||[]).slice(0,6);
-  let afterGanttY = topY + 0.3;
-  if(hitos.length){
-    const hRows = [[
-      {text:'Actividad', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}},
-      {text:'Inicio', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}},
-      {text:'Fin', options:{bold:true, color:PC.white, fill:{color:accent}, fontSize:8.5}}
-    ]];
-    hitos.forEach((h,ri)=>{
-      const band = ri % 2 === 1 ? PC.bg : PC.white;
-      hRows.push([
-        {text:h.nombre, options:{fontSize:8.5, fontFace:'Arial', color:PC.ink, fill:{color:band}}},
-        {text:fmtDate(h.inicio), options:{fontSize:8, fontFace:'Arial', color:PC.soft, fill:{color:band}}},
-        {text:fmtDate(h.fin), options:{fontSize:8, fontFace:'Arial', color:PC.soft, fill:{color:band}}}
-      ]);
-    });
-    sl.addTable(hRows, { x:0.45, y:afterGanttY, w:12.45, colW:[9.75,1.35,1.35], border:{type:'solid', color:PC.line, pt:0.5}, rowH:0.2, autoPage:false, valign:'middle' });
-    afterGanttY += 0.2 * hRows.length;
-    if((p.hitos||[]).length > 6){
-      sl.addText(`+ ${p.hitos.length-6} actividad(es) adicionales — ver detalle en la app`, { x:0.45, y:afterGanttY+0.03, w:12.45, h:0.2, fontSize:7.5, italic:true, color:PC.faint, fontFace:'Arial' });
-      afterGanttY += 0.22;
-    }
+    sl.addShape('roundRect', { x:0.45, y, w:12.45, h:0.42, fill:{color: al==='rojo' ? PC.rojoTint : PC.ambarTint}, rectRadius:0.04, line:{color:semHex(al), width:0.75} });
+    sl.addText(p.alerta.comentario, { x:0.62, y:y+0.02, w:12.12, h:0.38, fontSize:8.5, color:PC.ink, fontFace:'Arial', valign:'middle' });
+    y += 0.5;
   } else {
-    sl.addText('Sin hitos cargados.', { x:0.45, y:afterGanttY, w:12.45, h:0.24, fontSize:9, color:PC.faint, italic:true, fontFace:'Arial' });
-    afterGanttY += 0.26;
+    y += 0.08;
   }
 
-  const colY = afterGanttY + 0.18;
-  const leftX = 0.45, leftW = 7.55, rightX = 8.35, rightW = 4.55;
+  const ganttY = y;
+  addGanttVisual(sl, p, 0.45, ganttY, 12.45, 2.35, accent);
 
-  /* columna izquierda: highlights, lowlights, riesgos, apoyos */
-  let ly = colY;
-  sl.addText('HIGHLIGHTS', { x:leftX, y:ly, w:leftW, h:0.22, fontSize:9.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
-  ly += 0.24;
-  const highlights = (p.highlights||[]).slice(0,2);
-  if(highlights.length){
-    sl.addText(highlights.map(x=>({text:x.descripcion, options:{bullet:{code:'25CF'}, fontSize:8.5, color:PC.ink, fontFace:'Arial', breakLine:true}})), { x:leftX, y:ly, w:leftW, h:0.5 });
-  } else {
-    sl.addText('Sin highlights registrados.', { x:leftX, y:ly, w:leftW, h:0.2, fontSize:8.5, italic:true, color:PC.faint, fontFace:'Arial' });
-  }
-  ly += Math.max(0.24, 0.19*highlights.length);
+  const row3Y = 4.1;
+  const gap = 0.2;
+  const col1 = { x:0.45, w:4.15 }, col2 = { x:0.45+4.15+gap, w:4.15 }, col3 = { x:0.45+4.15+gap+4.15+gap, w:3.75 };
+  const row3H = 1.55;
 
-  sl.addText('LOWLIGHTS', { x:leftX, y:ly, w:leftW, h:0.22, fontSize:9.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
-  ly += 0.24;
-  const lowlights = (p.lowlights||[]).slice(0,2);
-  if(lowlights.length){
-    sl.addText(lowlights.map(x=>({text:x.descripcion, options:{bullet:{code:'25CF'}, fontSize:8.5, color:PC.rojo, fontFace:'Arial', breakLine:true}})), { x:leftX, y:ly, w:leftW, h:0.5 });
-  } else {
-    sl.addText('Sin lowlights registrados.', { x:leftX, y:ly, w:leftW, h:0.2, fontSize:8.5, italic:true, color:PC.faint, fontFace:'Arial' });
-  }
-  ly += Math.max(0.24, 0.19*lowlights.length);
+  let box = addCardBox(sl, col1.x, row3Y, col1.w, row3H, 'HIGHLIGHTS', accent);
+  addBulletBox(sl, box, (p.highlights||[]).slice(0,4).map(x=>({text:x.descripcion, color:PC.ink})), 'Sin highlights registrados.');
 
-  sl.addText('PRINCIPALES RIESGOS', { x:leftX, y:ly, w:leftW, h:0.22, fontSize:9.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
-  ly += 0.24;
-  const riesgos = (p.riesgos||[]).slice(0,3);
-  if(riesgos.length){
-    sl.addText(riesgos.map(r => ({
-      text: `${r.descripcion}  (${r.nivel})`,
-      options: { bullet:{code:'25CF'}, fontSize:8.5, color: r.nivel==='alto'?PC.rojo:r.nivel==='medio'?PC.ambar:PC.verde, fontFace:'Arial', breakLine:true }
-    })), { x:leftX, y:ly, w:leftW, h:0.7 });
-  } else {
-    sl.addText('Sin riesgos registrados.', { x:leftX, y:ly, w:leftW, h:0.2, fontSize:8.5, italic:true, color:PC.faint, fontFace:'Arial' });
-  }
-  ly += Math.max(0.24, 0.19*riesgos.length);
+  box = addCardBox(sl, col2.x, row3Y, col2.w, row3H, 'LOWLIGHTS', accent);
+  addBulletBox(sl, box, (p.lowlights||[]).slice(0,4).map(x=>({text:x.descripcion, color:PC.rojo})), 'Sin lowlights registrados.');
 
-  sl.addText('REQUERIMIENTOS DE APOYO', { x:leftX, y:ly, w:leftW, h:0.22, fontSize:9.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
-  ly += 0.24;
-  const apoyos = (p.apoyos||[]).slice(0,3);
-  if(apoyos.length){
-    sl.addText(apoyos.map(a => ({ text:a.descripcion, options:{ bullet:{code:'25CF'}, fontSize:8.5, color:PC.ink, fontFace:'Arial', breakLine:true } })), { x:leftX, y:ly, w:leftW, h:0.7 });
-  } else {
-    sl.addText('Sin requerimientos registrados.', { x:leftX, y:ly, w:leftW, h:0.2, fontSize:8.5, italic:true, color:PC.faint, fontFace:'Arial' });
-  }
-
-  /* columna derecha: presupuesto, a la altura del bloque izquierdo */
-  sl.addText('PRESUPUESTO', { x:rightX, y:colY, w:rightW, h:0.22, fontSize:9.5, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
   const pctEjec = p.presupuesto ? Math.min(100, Math.round((p.ejecutado||0)/p.presupuesto*100)) : 0;
-  sl.addShape('rect', { x:rightX, y:colY+2.9, w:rightW, h:1.6, fill:{color:PC.bg}, line:{color:PC.line, width:0.5} });
-  sl.addShape('roundRect', { x:rightX+0.2, y:colY+3.25, w:rightW-0.4, h:0.2, fill:{color:PC.white}, rectRadius:0.1, line:{type:'none'} });
-  if(pctEjec>0) sl.addShape('roundRect', { x:rightX+0.2, y:colY+3.25, w:(rightW-0.4)*(pctEjec/100), h:0.2, fill:{color:accent}, rectRadius:0.1, line:{type:'none'} });
-  sl.addText(`Ejecutado: ${fmtMoney(p.ejecutado)}  (${pctEjec}%)`, { x:rightX+0.2, y:colY+3.55, w:rightW-0.4, h:0.24, fontSize:9.5, color:PC.ink, fontFace:'Arial' });
-  sl.addText(`Presupuestado: ${fmtMoney(p.presupuesto)}`, { x:rightX+0.2, y:colY+3.83, w:rightW-0.4, h:0.24, fontSize:9.5, color:PC.soft, fontFace:'Arial' });
+  box = addCardBox(sl, col3.x, row3Y, col3.w, row3H, 'PRESUPUESTO', accent);
+  sl.addShape('roundRect', { x:box.x, y:box.y+0.06, w:box.w, h:0.16, fill:{color:PC.bg}, rectRadius:0.08, line:{type:'none'} });
+  if(pctEjec>0) sl.addShape('roundRect', { x:box.x, y:box.y+0.06, w:box.w*(pctEjec/100), h:0.16, fill:{color:accent}, rectRadius:0.08, line:{type:'none'} });
+  sl.addText(`Ejecutado: ${fmtMoney(p.ejecutado)}  (${pctEjec}%)`, { x:box.x, y:box.y+0.3, w:box.w, h:0.22, fontSize:8.5, color:PC.ink, fontFace:'Arial' });
+  sl.addText(`Presupuestado: ${fmtMoney(p.presupuesto)}`, { x:box.x, y:box.y+0.54, w:box.w, h:0.22, fontSize:8.5, color:PC.soft, fontFace:'Arial' });
+
+  const row2Y = row3Y + row3H + 0.15;
+  const row2H = 1.3;
+  const rcol1 = { x:0.45, w:(12.45-gap)/2 }, rcol2 = { x:0.45+(12.45-gap)/2+gap, w:(12.45-gap)/2 };
+
+  box = addCardBox(sl, rcol1.x, row2Y, rcol1.w, row2H, 'PRINCIPALES RIESGOS', accent);
+  addBulletBox(sl, box, (p.riesgos||[]).slice(0,4).map(r=>({text:`${r.descripcion}  (${r.nivel})`, color: r.nivel==='alto'?PC.rojo:r.nivel==='medio'?PC.ambar:PC.verde})), 'Sin riesgos registrados.');
+
+  box = addCardBox(sl, rcol2.x, row2Y, rcol2.w, row2H, 'REQUERIMIENTOS DE APOYO', accent);
+  addBulletBox(sl, box, (p.apoyos||[]).slice(0,4).map(a=>({text:a.descripcion, color:PC.ink})), 'Sin requerimientos registrados.');
 
   addFooter(sl, accent, titulo);
 }
 
+async function exportSingleProjectPPTX(p, btnEl){
+  const original = btnEl ? btnEl.textContent : '';
+  if(btnEl){ btnEl.textContent = 'Generando…'; btnEl.disabled = true; }
+  try{
+    await loadPptxLib();
+    const accent = PPTX_THEMES.marino.hex;
+    const pptx = new window.PptxGenJS();
+    pptx.defineLayout({ name:'WIDE', width:13.33, height:7.5 });
+    pptx.layout = 'WIDE';
+    addProjectSlide(pptx, p, accent, p.nombre);
+    const fname = (p.nombre||'proyecto').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    await pptx.writeFile({ fileName: fname + '.pptx' });
+  }catch(err){
+    console.error(err);
+    alert('No se pudo generar la presentación. Verifica tu conexión e inténtalo de nuevo.');
+  }finally{
+    if(btnEl){ btnEl.textContent = original; btnEl.disabled = false; }
+  }
+}
 loadData();
 </script>
 </body>
