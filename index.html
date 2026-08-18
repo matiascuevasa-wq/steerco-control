@@ -147,7 +147,8 @@ tbody tr:last-child td{border-bottom:none;}
 .detail-meta b{color:var(--ink);font-weight:600;}
 
 /* meta chips - etiquetas de fácil lectura, en grilla fija (no se reacomodan según el texto) */
-.chip-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.chip-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px;}
+.detail-actions-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .mchip{display:flex;flex-direction:column;justify-content:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;min-width:0;}
 .mchip .mc-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);font-weight:700;}
 .mchip .mc-value{font-size:13px;font-weight:700;color:var(--ink);margin-top:1px;white-space:normal;overflow-wrap:break-word;line-height:1.25;}
@@ -1688,6 +1689,17 @@ function renderDetailView(){
         </select>
         <button class="btn sm" data-action="toggle-slide-mode">${STATE.slideMode?'Vista normal':'Vista compacta (lámina)'}</button>
       </div>
+      <div class="detail-actions-row">
+        ${canUpdate(p) ? `<button class="btn primary" data-action="open-edit" data-id="${p.id}">${canFullEdit(p)?'Editar proyecto':'Actualizar proyecto'}</button>` : ''}
+        <button class="btn" id="export-single-btn" data-action="export-single-pptx" data-id="${p.id}">Exportar a PPT</button>
+        ${canFullEdit(p) ? `
+        ${p.estado==='activo'
+          ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
+          : `<button class="btn" data-action="unarchive" data-id="${p.id}">Reactivar</button>`}
+        <button class="btn danger" data-action="delete-project" data-id="${p.id}" title="Elimina el proyecto por completo, no queda ni como archivado">Eliminar definitivamente</button>
+        ` : ''}
+        ${!canUpdate(p) ? `<div class="readonly-note">Proyecto de ${esc(p.area)} — solo lectura desde tu sesión.</div>` : ''}
+      </div>
       <div class="detail-header">
         <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
           ${p.imagen
@@ -1695,32 +1707,21 @@ function renderDetailView(){
             : `<div class="photo-placeholder">Sin foto</div>`}
           ${canUpdate(p) ? `<button class="btn ghost sm" data-action="photo-quick-upload" data-id="${p.id}" style="width:100%;">${p.imagen?'Cambiar foto':'+ Agregar foto'}</button>` : ''}
         </div>
-        <div style="flex:1;">
+        <div style="flex:1;min-width:0;">
           <h2>${p.numero!=null?'N°'+p.numero+' — ':''}${esc(p.nombre)}</h2>
           <div class="chip-row">
             <div class="mchip${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-etapa" data-id="${p.id}" title="Clic para cambiar la etapa"`:''}><span class="mc-label">Etapa</span><span class="mc-value">${esc(p.etapa||'—')}</span></div>
             <div class="mchip"><span class="mc-label">Sesión</span><span class="mc-value">${esc(p.sesion||'—')}</span></div>
             <div class="mchip"><span class="mc-label">Tipo</span><span class="mc-value">${esc(p.tipoProyecto||'—')}</span></div>
             <div class="mchip"><span class="mc-label">KPI Driver</span><span class="mc-value">${esc(p.kpiDriver||'—')}</span></div>
-            <div class="mchip full"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha inicio proyecto</span><span class="mc-value">${fmtDate(p.fechaInicio)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha proyectada de término</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
+            <div class="mchip full"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha de término requerida</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
             <div class="mchip sem ${sem}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-avance" data-id="${p.id}" title="Clic para actualizar el avance"`:''}><span class="dot ${sem}"></span><span><span class="mc-label" style="display:block;">Avance</span><span class="mc-value">${p.avanceReal||0}% / ${p.avancePlan||0}% (${fmtBrecha(brecha)})</span></span></div>
             <div class="mchip sem ${al}${canUpdate(p)?' qedit':''}" ${canUpdate(p)?`data-action="quick-edit-alerta" data-id="${p.id}" title="Clic para cambiar la alerta"`:''}><span class="dot ${al}"></span><span><span class="mc-label" style="display:block;">Alerta</span><span class="mc-value">${al==='verde'?'Sin alerta':al==='ambar'?'Amarilla':'Roja'}</span></span></div>
             <div class="mchip"><span class="mc-label">Estado</span><span class="mc-value">${p.estado==='activo'?'Activo':'Archivado'}</span></div>
           </div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${canUpdate(p) ? `<button class="btn primary" data-action="open-edit" data-id="${p.id}">${canFullEdit(p)?'Editar proyecto':'Actualizar proyecto'}</button>` : ''}
-          <button class="btn" id="export-single-btn" data-action="export-single-pptx" data-id="${p.id}">Exportar a PPT</button>
-          ${canFullEdit(p) ? `
-          ${p.estado==='activo'
-            ? `<button class="btn danger" data-action="archive" data-id="${p.id}">Dar de baja</button>`
-            : `<button class="btn" data-action="unarchive" data-id="${p.id}">Reactivar</button>`}
-          <button class="btn danger" data-action="delete-project" data-id="${p.id}" title="Elimina el proyecto por completo, no queda ni como archivado">Eliminar definitivamente</button>
-          ` : ''}
-          ${!canUpdate(p) ? `<div class="readonly-note">Proyecto de ${esc(p.area)} — solo lectura desde tu sesión.</div>` : ''}
         </div>
       </div>
     </div>
