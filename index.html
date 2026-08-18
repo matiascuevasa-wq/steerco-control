@@ -146,13 +146,14 @@ tbody tr:last-child td{border-bottom:none;}
 .detail-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--ink-soft);}
 .detail-meta b{color:var(--ink);font-weight:600;}
 
-/* meta chips - etiquetas de fácil lectura */
-.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.mchip{display:flex;flex-direction:column;justify-content:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;min-width:96px;}
+/* meta chips - etiquetas de fácil lectura, en grilla fija (no se reacomodan según el texto) */
+.chip-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.mchip{display:flex;flex-direction:column;justify-content:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;min-width:0;}
 .mchip .mc-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);font-weight:700;}
-.mchip .mc-value{font-size:13px;font-weight:700;color:var(--ink);margin-top:1px;white-space:nowrap;}
+.mchip .mc-value{font-size:13px;font-weight:700;color:var(--ink);margin-top:1px;white-space:normal;overflow-wrap:break-word;line-height:1.25;}
+.mchip.full{grid-column:1 / -1;}
 .mchip.sem{flex-direction:row;align-items:center;gap:8px;}
-.mchip.sem .dot{width:11px;height:11px;}
+.mchip.sem .dot{width:11px;height:11px;flex-shrink:0;}
 .mchip.verde{background:var(--verde-tint);border-color:transparent;}
 .mchip.verde .mc-value{color:var(--verde);}
 .mchip.ambar{background:var(--ambar-tint);border-color:transparent;}
@@ -280,6 +281,7 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
 .sync-row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-faint);margin-top:8px;justify-content:flex-end;}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--verde);display:inline-block;}
 .readonly-note{font-size:12px;color:var(--ink-faint);background:var(--bg);border-radius:7px;padding:8px 12px;margin-top:4px;}
+.load-error-banner{background:var(--rojo-tint);border:1px solid var(--rojo);color:var(--rojo);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 
 /* ---------- vista compacta (lámina) ---------- */
 .slide-view{
@@ -375,7 +377,7 @@ a.linklike{color:var(--navy);cursor:pointer;font-weight:600;}
   .subsection{padding-top:12px;margin-top:14px;}
 
   .detail-header{gap:12px;}
-  .chip-row{gap:6px;}
+  .chip-row{gap:6px;grid-template-columns:repeat(2,1fr);}
   .mchip{min-width:0;padding:5px 9px;}
   .mchip .mc-value{font-size:12px;}
   .project-photo-thumb,.photo-placeholder{width:110px;height:78px;}
@@ -574,6 +576,7 @@ STATE.loginSelected = '';
 STATE.loginError = '';
 STATE.slideMode = false;
 STATE.showHistorial = false;
+STATE.loadError = false;
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -1013,64 +1016,94 @@ function seedData(){
 }
 
 async function loadData(){
+  STATE.loadError = false;
   try{
     const list = await fbGetAllProjects();
     if(list.length){
       STATE.projects = list;
     } else {
+      /* Colección realmente vacía (primera vez) -> ahí sí corresponde sembrar los datos base. */
       STATE.projects = seedData();
       await saveData();
     }
   }catch(e){
+    /* Un fallo de lectura (red, permisos, etc.) NO significa que la base esté vacía.
+       Antes esto recreaba los 20 proyectos de cero y quedaban duplicados sin foto.
+       Ahora: no tocamos Firestore, mostramos un aviso, y el usuario puede reintentar. */
     console.error('Error cargando proyectos:', e);
-    STATE.projects = seedData();
-    try{ await saveData(); }catch(e2){}
+    STATE.projects = [];
+    STATE.loadError = true;
   }
   STATE.lastSync = Date.now();
 
   try{
     const d = await fbGetDoc(DIRECTORIO_KEY);
-    STATE.directorio = d && d.value ? JSON.parse(d.value) : DIRECTORIO_SEED.slice();
-    if(!d || !d.value){ await saveDirectorio(); }
+    if(d && d.value){
+      STATE.directorio = JSON.parse(d.value);
+    } else {
+      STATE.directorio = DIRECTORIO_SEED.slice();
+      await saveDirectorio();
+    }
   }catch(e){
+    console.error('Error cargando directorio:', e);
     STATE.directorio = DIRECTORIO_SEED.slice();
-    try{ await saveDirectorio(); }catch(e2){}
+    STATE.loadError = true;
   }
 
   try{
     const a = await fbGetDoc(AREAS_KEY);
-    STATE.areas = a && a.value ? JSON.parse(a.value) : AREAS_SEED.slice();
-    if(!a || !a.value){ await saveAreas(); }
+    if(a && a.value){
+      STATE.areas = JSON.parse(a.value);
+    } else {
+      STATE.areas = AREAS_SEED.slice();
+      await saveAreas();
+    }
   }catch(e){
+    console.error('Error cargando áreas:', e);
     STATE.areas = AREAS_SEED.slice();
-    try{ await saveAreas(); }catch(e2){}
+    STATE.loadError = true;
   }
 
   try{
     const s = await fbGetDoc(SESIONES_KEY);
-    STATE.sesiones = s && s.value ? JSON.parse(s.value) : SESIONES_SEED.slice();
-    if(!s || !s.value){ await saveSesiones(); }
+    if(s && s.value){
+      STATE.sesiones = JSON.parse(s.value);
+    } else {
+      STATE.sesiones = SESIONES_SEED.slice();
+      await saveSesiones();
+    }
   }catch(e){
+    console.error('Error cargando sesiones:', e);
     STATE.sesiones = SESIONES_SEED.slice();
-    try{ await saveSesiones(); }catch(e2){}
+    STATE.loadError = true;
   }
 
   try{
     const t = await fbGetDoc(TIPOS_KEY);
-    STATE.tipos = t && t.value ? JSON.parse(t.value) : TIPOS_SEED.slice();
-    if(!t || !t.value){ await saveTipos(); }
+    if(t && t.value){
+      STATE.tipos = JSON.parse(t.value);
+    } else {
+      STATE.tipos = TIPOS_SEED.slice();
+      await saveTipos();
+    }
   }catch(e){
+    console.error('Error cargando tipos de proyecto:', e);
     STATE.tipos = TIPOS_SEED.slice();
-    try{ await saveTipos(); }catch(e2){}
+    STATE.loadError = true;
   }
 
   try{
     const k = await fbGetDoc(KPI_KEY);
-    STATE.kpiDrivers = k && k.value ? JSON.parse(k.value) : KPI_SEED.slice();
-    if(!k || !k.value){ await saveKpiDrivers(); }
+    if(k && k.value){
+      STATE.kpiDrivers = JSON.parse(k.value);
+    } else {
+      STATE.kpiDrivers = KPI_SEED.slice();
+      await saveKpiDrivers();
+    }
   }catch(e){
+    console.error('Error cargando KPI drivers:', e);
     STATE.kpiDrivers = KPI_SEED.slice();
-    try{ await saveKpiDrivers(); }catch(e2){}
+    STATE.loadError = true;
   }
 
   try{
@@ -1294,8 +1327,17 @@ function render(){
   else if(STATE.view === 'equipo') body = renderTeamView();
   else if(STATE.view === 'timeline') body = renderTimelineView();
   else body = renderDetailView();
-  app.innerHTML = renderTopbar() + body;
+  app.innerHTML = renderTopbar() + renderLoadErrorBanner() + body;
   attachHandlers();
+}
+
+function renderLoadErrorBanner(){
+  if(!STATE.loadError) return '';
+  return `
+  <div class="load-error-banner">
+    ⚠️ No se pudo conectar con la base de datos al cargar (puede ser un problema momentáneo de red). Lo que ves puede estar incompleto o desactualizado — no se creó ni se borró nada.
+    <button class="btn sm" data-action="retry-load">Reintentar</button>
+  </div>`;
 }
 
 function renderLogin(){
@@ -1660,7 +1702,7 @@ function renderDetailView(){
             <div class="mchip"><span class="mc-label">Sesión</span><span class="mc-value">${esc(p.sesion||'—')}</span></div>
             <div class="mchip"><span class="mc-label">Tipo</span><span class="mc-value">${esc(p.tipoProyecto||'—')}</span></div>
             <div class="mchip"><span class="mc-label">KPI Driver</span><span class="mc-value">${esc(p.kpiDriver||'—')}</span></div>
-            <div class="mchip"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
+            <div class="mchip full"><span class="mc-label">Responsable</span><span class="mc-value">${esc(p.responsable)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha inicio proyecto</span><span class="mc-value">${fmtDate(p.fechaInicio)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha proyectada de término</span><span class="mc-value">${fmtDate(p.fechaTermino)}</span></div>
             <div class="mchip"><span class="mc-label">Fecha de término requerida</span><span class="mc-value">${fmtDate(p.fechaRequerimiento)}</span></div>
@@ -1970,9 +2012,16 @@ function renderTeamView(){
   ${renderCategoryPanels(STATE.tipos, {title:'Tipos de proyecto', addTitle:'Agregar tipo de proyecto', placeholder:'Ej: Sustentación, Crecimiento, Reposición', inputId:'nt-nombre', listAction:'remove-tipo', addAction:'add-tipo', fieldKey:'tipoProyecto'})}
   ${renderCategoryPanels(STATE.kpiDrivers, {title:'KPI Drivers', addTitle:'Agregar KPI Driver', placeholder:'Ej: Producción, Costo, Seguridad', inputId:'nk-nombre', listAction:'remove-kpi', addAction:'add-kpi', fieldKey:'kpiDriver'})}
   <div class="panel">
+    <div class="panel-head"><h2>Posibles duplicados</h2></div>
+    <div class="panel-body">
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Proyectos con el mismo nombre — normalmente pasa si un archivo se importó dos veces. Abrí cada uno y usá "Eliminar definitivamente" en el que sobre.</div>
+      ${renderDuplicatesList()}
+    </div>
+  </div>
+  <div class="panel">
     <div class="panel-head"><h2>Importar proyectos</h2></div>
     <div class="panel-body">
-      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Para cargar varios proyectos nuevos de una vez (por ejemplo, extraídos de una presentación que le pasaste a Claude), subí acá el archivo <b>JSON</b> que Claude te entregue ya estructurado. Se agregan como proyectos nuevos, con numeración correlativa automática — no reemplaza ni borra los proyectos existentes.</div>
+      <div class="small-note" style="margin-top:0;margin-bottom:14px;">Para cargar varios proyectos nuevos de una vez (por ejemplo, extraídos de una presentación que le pasaste a Claude), subí acá el archivo <b>JSON</b> que Claude te entregue ya estructurado. Se agregan como proyectos nuevos, con numeración correlativa automática — no reemplaza ni borra los proyectos existentes. Si un nombre ya existe en el listado, se omite automáticamente para no duplicar.</div>
       <input type="file" id="import-projects-file" accept=".json" style="display:none;">
       <button class="btn primary" data-action="import-projects-btn">Importar proyectos (archivo .json)</button>
     </div>
@@ -1984,6 +2033,22 @@ function renderTeamView(){
       <button class="btn danger" data-action="reset-seed-data">Restablecer con datos de la presentación (20 proyectos)</button>
     </div>
   </div>`;
+}
+
+function renderDuplicatesList(){
+  const counts = {};
+  STATE.projects.forEach(p=>{
+    const key = p.nombre.trim().toLowerCase();
+    counts[key] = counts[key] || [];
+    counts[key].push(p);
+  });
+  const groups = Object.values(counts).filter(g=>g.length>1);
+  if(!groups.length) return `<div class="empty">No se encontraron nombres repetidos. 👍</div>`;
+  return groups.map(g => `
+    <div class="follow-row" style="flex-wrap:wrap;">
+      <div class="follow-name" style="width:100%;margin-bottom:4px;">${esc(g[0].nombre)} <span style="color:var(--rojo);font-weight:700;">(${g.length} copias)</span></div>
+      ${g.map(p=>`<button class="btn sm" data-action="open-detail" data-id="${p.id}">Abrir N°${p.numero} — creado ${p.historial&&p.historial[0]?fmtDate(p.historial[0].fecha):'—'}</button>`).join('')}
+    </div>`).join('');
 }
 
 /* ---------------- EVENT HANDLING ---------------- */
@@ -2052,6 +2117,7 @@ function handleAction(action, el){
     case 'login-select-change': STATE.loginSelected = el.value; STATE.loginError=''; render(); break;
     case 'logout': doLogout(); break;
     case 'sync-now': pollForUpdates(); break;
+    case 'retry-load': STATE.loading = true; render(); loadData(); break;
     case 'add-person': addPerson(); break;
     case 'remove-person': removePerson(Number(el.dataset.idx)); break;
     case 'set-password': setPersonPassword(Number(el.dataset.idx)); break;
@@ -2277,13 +2343,16 @@ async function importProjectsFromJSON(file){
     alert('El archivo debe contener una lista (array) de proyectos, entre corchetes [ ].');
     return;
   }
-  let importados = 0, omitidos = 0;
+  let importados = 0, omitidos = 0, duplicados = 0;
   for(const raw of data){
     if(!raw || !raw.nombre || !String(raw.nombre).trim()){ omitidos++; continue; }
+    const nombreLimpio = String(raw.nombre).trim();
+    const yaExiste = STATE.projects.some(existing => existing.nombre.trim().toLowerCase() === nombreLimpio.toLowerCase());
+    if(yaExiste){ duplicados++; continue; }
     const p = {
       id: uid('proj'),
       numero: getNextNumero(),
-      nombre: String(raw.nombre).trim(),
+      nombre: nombreLimpio,
       area: (raw.area && STATE.areas.includes(raw.area)) ? raw.area : STATE.areas[0],
       responsable: raw.responsable ? String(raw.responsable) : '',
       etapa: ETAPAS.includes(raw.etapa) ? raw.etapa : 'Estudio',
@@ -2314,7 +2383,9 @@ async function importProjectsFromJSON(file){
     await saveData();
   }
   render();
-  alert(`Importación terminada: ${importados} proyecto(s) agregado(s)` + (omitidos ? `, ${omitidos} omitido(s) por no tener nombre.` : '.'));
+  alert(`Importación terminada: ${importados} proyecto(s) agregado(s)` +
+    (duplicados ? `, ${duplicados} omitido(s) por tener el mismo nombre que un proyecto ya existente` : '') +
+    (omitidos ? `, ${omitidos} omitido(s) por no tener nombre` : '') + '.');
 }
 
 async function addPerson(){
@@ -3070,11 +3141,19 @@ function addGanttVisual(sl, p, x, y, w, h, accent){
   sl.addText('CARTA GANTT (PLAN)', { x, y, w, h:0.22, fontSize:10, bold:true, color:accent, fontFace:'Arial', charSpacing:1 });
   const chartY = y + 0.28;
   const chartH = h - 0.28;
-  const hitos = (p.hitos||[]).slice(0,8);
-  if(!hitos.length){
+  const axisH = 0.16, rowGap = 0.04;
+  const rowsH = Math.max(0.14, chartH - axisH - rowGap);
+  const allHitos = p.hitos||[];
+  if(!allHitos.length){
     sl.addText('Sin hitos cargados.', { x, y:chartY, w, h:0.3, fontSize:9, italic:true, color:PC.faint, fontFace:'Arial' });
     return;
   }
+  /* Nunca dejamos que las filas se salgan de la altura asignada: si hay muchos hitos,
+     se muestran menos (con una nota de "+N adicionales") en vez de desbordar la lámina. */
+  const maxRows = Math.max(1, Math.min(9, Math.floor(rowsH / 0.14)));
+  const hitos = allHitos.slice(0, maxRows);
+  const rowH = rowsH / hitos.length;
+
   let minD=null, maxD=null;
   hitos.forEach(hh=>{
     if(!minD||hh.inicio<minD) minD=hh.inicio;
@@ -3084,9 +3163,6 @@ function addGanttVisual(sl, p, x, y, w, h, accent){
   const labelW = w*0.30;
   const trackX = x + labelW + 0.1;
   const trackW = w - labelW - 0.1;
-  const axisH = 0.16;
-  const rowsH = chartH - axisH - 0.04;
-  const rowH = Math.max(0.16, Math.min(0.27, rowsH / hitos.length));
 
   const {ticks} = buildTimeTicks(minD, maxD);
   ticks.forEach(t=>{
@@ -3095,10 +3171,12 @@ function addGanttVisual(sl, p, x, y, w, h, accent){
   });
   sl.addShape('line', { x:trackX, y:chartY+axisH, w:trackW, h:0, line:{color:PC.line, width:0.5} });
 
-  const barsY = chartY + axisH + 0.04;
+  const barsY = chartY + axisH + rowGap;
+  const fontSz = rowH < 0.19 ? 6 : 7;
   hitos.forEach((hh,i)=>{
     const ry = barsY + i*rowH;
-    sl.addText(hh.nombre, { x, y:ry, w:labelW, h:rowH, fontSize:7, color:PC.ink, fontFace:'Arial', valign:'middle' });
+    const label = hh.nombre.length > 46 ? hh.nombre.slice(0,44)+'…' : hh.nombre;
+    sl.addText(label, { x, y:ry, w:labelW, h:rowH, fontSize:fontSz, color:PC.ink, fontFace:'Arial', valign:'middle', wrap:false });
     const off = Math.max(0, daysBetween(minD, hh.inicio)/totalDays);
     const dur = Math.max(0.012, daysBetween(hh.inicio, hh.fin)/totalDays);
     sl.addShape('roundRect', {
@@ -3106,8 +3184,8 @@ function addGanttVisual(sl, p, x, y, w, h, accent){
       fill:{color:'AEB9CC'}, line:{color:'8E9CB5', width:0.5}, rectRadius:0.015
     });
   });
-  if((p.hitos||[]).length > 8){
-    sl.addText(`+ ${p.hitos.length-8} actividad(es) adicionales — ver detalle en la app`, { x, y: barsY + hitos.length*rowH + 0.02, w, h:0.16, fontSize:6.5, italic:true, color:PC.faint, fontFace:'Arial' });
+  if(allHitos.length > hitos.length){
+    sl.addText(`+ ${allHitos.length-hitos.length} actividad(es) adicionales — ver detalle en la app`, { x, y: barsY + hitos.length*rowH - 0.02, w, h:0.14, fontSize:6, italic:true, color:PC.faint, fontFace:'Arial' });
   }
 }
 
@@ -3150,13 +3228,18 @@ function addProjectSlide(pptx, p, accent, titulo){
     y += 0.08;
   }
 
-  const ganttY = y;
-  addGanttVisual(sl, p, 0.45, ganttY, 12.45, 2.35, accent);
-
-  const row3Y = 4.1;
+  const row3H = 1.55, row2H = 1.3, rowGapV = 0.15, footerMargin = 0.35;
   const gap = 0.2;
+
+  /* La Gantt nunca debe empujar el resto fuera de la lámina: si el banner de alerta
+     corrió todo hacia abajo, le damos menos alto a la Gantt para que todo siga cabiendo. */
+  const ganttY = y;
+  const maxGanttH = 7.5 - footerMargin - row2H - rowGapV - row3H - rowGapV - ganttY;
+  const ganttH = Math.max(1.0, Math.min(2.35, maxGanttH));
+  addGanttVisual(sl, p, 0.45, ganttY, 12.45, ganttH, accent);
+
+  const row3Y = ganttY + ganttH + rowGapV;
   const col1 = { x:0.45, w:4.15 }, col2 = { x:0.45+4.15+gap, w:4.15 }, col3 = { x:0.45+4.15+gap+4.15+gap, w:3.75 };
-  const row3H = 1.55;
 
   let box = addCardBox(sl, col1.x, row3Y, col1.w, row3H, 'HIGHLIGHTS', accent);
   addBulletBox(sl, box, (p.highlights||[]).slice(0,4).map(x=>({text:x.descripcion, color:PC.ink})), 'Sin highlights registrados.');
@@ -3171,8 +3254,7 @@ function addProjectSlide(pptx, p, accent, titulo){
   sl.addText(`Ejecutado: ${fmtMoney(p.ejecutado)}  (${pctEjec}%)`, { x:box.x, y:box.y+0.3, w:box.w, h:0.22, fontSize:8.5, color:PC.ink, fontFace:'Arial' });
   sl.addText(`Presupuestado: ${fmtMoney(p.presupuesto)}`, { x:box.x, y:box.y+0.54, w:box.w, h:0.22, fontSize:8.5, color:PC.soft, fontFace:'Arial' });
 
-  const row2Y = row3Y + row3H + 0.15;
-  const row2H = 1.3;
+  const row2Y = row3Y + row3H + rowGapV;
   const rcol1 = { x:0.45, w:(12.45-gap)/2 }, rcol2 = { x:0.45+(12.45-gap)/2+gap, w:(12.45-gap)/2 };
 
   box = addCardBox(sl, rcol1.x, row2Y, rcol1.w, row2H, 'PRINCIPALES RIESGOS', accent);
